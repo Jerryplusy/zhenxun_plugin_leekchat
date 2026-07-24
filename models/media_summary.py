@@ -20,7 +20,7 @@ class MediaSummary(Model):
 class MediaSummarySource(Model):
     source_key = fields.CharField(pk=True, max_length=128)
     summary = fields.ForeignKeyField(
-        "leekchat.MediaSummary",
+        "models.MediaSummary",
         related_name="sources",
         on_delete=fields.CASCADE,
     )

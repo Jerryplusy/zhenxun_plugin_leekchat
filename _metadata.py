@@ -52,7 +52,7 @@ __plugin_meta__ = PluginMetadata(
                 value="{}",
                 help="基础配置 JSON",
                 default_value="{}",
-                type=dict,
+                type=str,
             ),
             RegisterConfig(
                 module="zhenxun_plugin_leekchat",
@@ -60,7 +60,7 @@ __plugin_meta__ = PluginMetadata(
                 value="{}",
                 help="设置项配置 JSON",
                 default_value="{}",
-                type=dict,
+                type=str,
             ),
             RegisterConfig(
                 module="zhenxun_plugin_leekchat",
@@ -68,7 +68,7 @@ __plugin_meta__ = PluginMetadata(
                 value="{}",
                 help="个性化配置 JSON（人设、情感、风格）",
                 default_value="{}",
-                type=dict,
+                type=str,
             ),
             RegisterConfig(
                 module="zhenxun_plugin_leekchat",
@@ -76,7 +76,7 @@ __plugin_meta__ = PluginMetadata(
                 value="{}",
                 help="群覆盖配置 JSON",
                 default_value="{}",
-                type=dict,
+                type=str,
             ),
         ],
         limits=[PluginCdBlock(cd=5, result="每5秒才能发一条哦~")],

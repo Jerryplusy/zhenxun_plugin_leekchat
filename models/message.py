@@ -6,7 +6,7 @@ from zhenxun.services.db_context import Model
 class ChatMessage(Model):
     id = fields.BigIntField(pk=True, auto_increment=True)
     session = fields.ForeignKeyField(
-        "leekchat.ChatSession",
+        "models.ChatSession",
         related_name="messages",
         on_delete=fields.CASCADE,
     )

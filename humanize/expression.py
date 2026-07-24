@@ -7,7 +7,7 @@ class ExpressionLearner:
     """TODO: Expression 功能暂不实现"""
 
     def __init__(self, *_args, **_kwargs) -> None:
-        logger.warning("TODO: ExpressionLearner 未实现 - Expression 功能")
+        pass
 
     async def on_message(self, *_args, **_kwargs) -> None:
         return None
