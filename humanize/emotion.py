@@ -84,7 +84,7 @@ class EmotionAgent:
         )
         try:
             working_model = (
-                getattr(cfg, "workingModel", None) or getattr(cfg, "model", "")
+                getattr(cfg, "workingModel", None) or ""
             )
             resp = await ai_generate(
                 messages=[LLMMessage.user(prompt)],

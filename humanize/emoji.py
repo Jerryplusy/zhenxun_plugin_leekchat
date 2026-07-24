@@ -108,7 +108,7 @@ class EmojiAgent:
             f"--- REPLY TEXT ---\n{text}\n\n--- CANDIDATES ---\n{listing}"
         )
         try:
-            model = getattr(cfg, "workingModel", None) or getattr(cfg, "model", "")
+            model = getattr(cfg, "workingModel", None) or ""
             resp = await ai_generate(
                 messages=[LLMMessage.user(prompt)],
                 model=model,

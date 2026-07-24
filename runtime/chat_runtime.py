@@ -40,19 +40,18 @@ class ChatRuntime:
             )
 
             tool_ctx = self._ctx.build_tool_context(
-                ctx=self._ctx.ctx if hasattr(self._ctx, "ctx") else None,
+                plugin_ctx=self._ctx,
                 event=options.get("event"),
                 self_id=options.get("selfId", 0),
-                group_session_id=f"group:{options.get('groupId', 0)}",
+                session_id=f"group:{options.get('groupId', 0)}",
                 group_id=options.get("groupId"),
                 user_id=options.get("userId", 0),
                 config=cfg,
                 ai_service=self._ctx.ai_service,
                 db=self._ctx.db,
                 bot_role="member",
-                pendingImageUrls=None,
-                humanize=self._ctx.humanize,
                 target_message=target_message,
+                humanize=self._ctx.humanize,
             )
 
             prompt_ctx = type(

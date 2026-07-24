@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -92,6 +91,7 @@ async def finalize_chat_turn(
     plugin_ctx: "ChatPluginContext",
     *,
     event: Any,
+    bot: Any | None = None,
     cfg,
     result,
     group_id: int | None,
@@ -102,12 +102,12 @@ async def finalize_chat_turn(
     send: bool,
     is_live: bool,
 ) -> None:
-    from .send import send_ai_response, send_emoji, send_text_message
+    from .send import send_ai_response, send_emoji
 
     if not send:
         return
 
-    bot = getattr(event, "bot", None)
+    bot = bot or getattr(event, "bot", None)
     if bot is None:
         return
 
@@ -213,6 +213,7 @@ async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None,
     await finalize_chat_turn(
         plugin_ctx,
         event=event,
+        bot=bot,
         cfg=cfg,
         result=result,
         group_id=group_id,

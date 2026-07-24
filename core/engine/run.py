@@ -8,7 +8,7 @@ from zhenxun.services.ai.core.messages import LLMMessage, TextPart
 from zhenxun.services.ai.core.messages.parts import ImagePart
 from zhenxun.services.log import logger
 
-from ..context import ChatMessage, ChatResult
+from ..context import ChatMessage, ChatResult, PromptCtx
 from ..llm_caller import LLMCaller
 from ..prompt import build_dynamic_user_context, build_static_system_prompt
 from ..media import consume_complete_stream_units
@@ -26,12 +26,9 @@ async def run_chat(
     structured_history=None,
 ) -> ChatResult:
     """主对话循环 - 调 LLM，发送响应"""
-    if ai is None:
-        return ChatResult()
-
     cfg = prompt_ctx.config if hasattr(prompt_ctx, "config") else prompt_ctx
     bot_nickname = getattr(prompt_ctx, "bot_nickname", "Bot")
-    model_name = getattr(cfg, "model", "") or ""
+    model_name = getattr(cfg, "mainModel", "") or ""
 
     emotion_state = await humanize.emotion_agent.refresh_if_needed(
         session_id=tool_ctx.session_id,
@@ -41,25 +38,25 @@ async def run_chat(
     )
 
     static_prompt = build_static_system_prompt(cfg, bot_nickname, allowed_skills=[])
-    dynamic_ctx = {
-        "config": cfg,
-        "bot_nickname": bot_nickname,
-        "bot_role": getattr(prompt_ctx, "bot_role", "member"),
-        "is_group": getattr(prompt_ctx, "is_group", True),
-        "group_name": getattr(prompt_ctx, "group_name", None),
-        "member_count": getattr(prompt_ctx, "member_count", None),
-        "chat_history": chat_history,
-        "target_message": target_message,
-        "current_emotion": emotion_state.current if emotion_state else None,
-        "memory_context": getattr(prompt_ctx, "memory_context", None),
-        "topic_context": getattr(prompt_ctx, "topic_context", None),
-        "expression_context": getattr(prompt_ctx, "expression_context", None),
-        "planner_thoughts": getattr(prompt_ctx, "planner_thoughts", None),
-        "reply_context": getattr(prompt_ctx, "reply_context", None),
-        "review_messages": getattr(prompt_ctx, "review_messages", None),
-        "prompt_injections": getattr(prompt_ctx, "prompt_injections", None),
-        "active_skills_info": getattr(prompt_ctx, "active_skills_info", None),
-    }
+    dynamic_ctx = PromptCtx(
+        config=cfg,
+        bot_nickname=bot_nickname,
+        bot_role=getattr(prompt_ctx, "bot_role", "member"),
+        is_group=getattr(prompt_ctx, "is_group", True),
+        group_name=getattr(prompt_ctx, "group_name", None),
+        member_count=getattr(prompt_ctx, "member_count", None),
+        chat_history=chat_history,
+        target_message=target_message,
+        current_emotion=emotion_state.current if emotion_state else None,
+        memory_context=getattr(prompt_ctx, "memory_context", None),
+        topic_context=getattr(prompt_ctx, "topic_context", None),
+        expression_context=getattr(prompt_ctx, "expression_context", None),
+        planner_thoughts=getattr(prompt_ctx, "planner_thoughts", None),
+        reply_context=getattr(prompt_ctx, "reply_context", None),
+        review_messages=getattr(prompt_ctx, "review_messages", None),
+        prompt_injections=getattr(prompt_ctx, "prompt_injections", None),
+        active_skills_info=getattr(prompt_ctx, "active_skills_info", None),
+    )
     dynamic_user_context = build_dynamic_user_context(dynamic_ctx)
 
     pending_image_urls = getattr(tool_ctx, "pending_image_urls", []) or []

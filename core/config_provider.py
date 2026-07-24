@@ -161,6 +161,11 @@ class ChatConfigProvider:
         merged = _deep_merge(base, settings)
         merged = _deep_merge(merged, personalization)
 
+        # 模型字段：扁平配置项 MAIN_MODEL/WORKING_MODEL/VISION_MODEL -> LeekchatConfig 字段
+        merged["mainModel"] = flat.get("MAIN_MODEL") or ""
+        merged["workingModel"] = flat.get("WORKING_MODEL") or ""
+        merged["multimodalWorkingModel"] = flat.get("VISION_MODEL") or ""
+
         merged["blacklistGroups"] = _normalize_id_list(merged.get("blacklistGroups"))
         merged["whitelistGroups"] = _normalize_id_list(merged.get("whitelistGroups"))
         merged["mediaAnalysisBlacklistUsers"] = _normalize_id_list(

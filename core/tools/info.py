@@ -85,9 +85,9 @@ async def _describe_image(tool_ctx: Any, image_url: str, prompt: str) -> dict:
         from zhenxun.services.ai.core.messages.parts import ImagePart, TextPart
 
         msg = LLMMessage.user([TextPart(text=prompt), ImagePart(url=image_url)])
-        cfg = getattr(tool_ctx.config, "multimodalWorkingModel", None)
-        model = cfg or getattr(tool_ctx.config, "workingModel", None) or getattr(
-            tool_ctx.config, "model", None
+        model = (
+            getattr(tool_ctx.config, "multimodalWorkingModel", None)
+            or getattr(tool_ctx.config, "workingModel", None)
         )
         resp = await ai.generate(messages=[msg], model=model)
         return {"success": True, "description": resp.text or ""}

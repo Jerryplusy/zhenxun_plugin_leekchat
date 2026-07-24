@@ -49,7 +49,7 @@ class ActionPlanner:
             f"Latest content (idle debug={is_idle_debug}):\n{merged_content}\n"
         )
         try:
-            model = getattr(cfg, "workingModel", None) or getattr(cfg, "model", "")
+            model = getattr(cfg, "workingModel", None) or ""
             resp = await ai_generate(
                 messages=[LLMMessage.user(prompt)],
                 model=model,

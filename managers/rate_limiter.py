@@ -64,13 +64,17 @@ class RateLimiter:
     def _dynamic_delay(self, group_id: int | None) -> dict:
         if self._get_config:
             cfg = self._get_config(group_id)
-            return getattr(cfg, "dynamicDelay", None) or DEFAULT_DYNAMIC_DELAY
+            dd = getattr(cfg, "dynamicDelay", None)
+            if dd is not None:
+                return dd.model_dump() if hasattr(dd, "model_dump") else dict(dd)
         return DEFAULT_DYNAMIC_DELAY
 
     def _ai_request_limits(self, group_id: int | None) -> dict:
         if self._get_config:
             cfg = self._get_config(group_id)
-            return getattr(cfg, "aiRequestLimits", None) or DEFAULT_AI_REQUEST_LIMITS
+            al = getattr(cfg, "aiRequestLimits", None)
+            if al is not None:
+                return al.model_dump() if hasattr(al, "model_dump") else dict(al)
         return DEFAULT_AI_REQUEST_LIMITS
 
     def can_process(self, user_id: int, group_id: int | None, content: str) -> bool:

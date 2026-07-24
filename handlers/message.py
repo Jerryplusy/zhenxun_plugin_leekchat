@@ -81,6 +81,11 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
         pass
 
     try:
+        await plugin_ctx.session_manager.get_or_create(
+            session_id,
+            "group" if group_id else "personal",
+            group_id if group_id else user_id,
+        )
         await ChatMessage.create(
             session_id=session_id,
             role="user",

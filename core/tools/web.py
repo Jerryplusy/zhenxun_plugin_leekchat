@@ -51,10 +51,7 @@ def build_web_read_page_tool(tool_ctx: Any) -> dict:
                 ai = tool_ctx.ai_service.getDefault() if tool_ctx.ai_service else None
                 if not ai:
                     return {"success": False, "error": "AI instance not available"}
-            working_model = (
-                getattr(tool_ctx.config, "workingModel", None)
-                or getattr(tool_ctx.config, "model", "")
-            )
+            working_model = getattr(tool_ctx.config, "workingModel", None) or ""
             return await read_web_page(ai, working_model, tool_ctx.config.webReader, args or {})
         except Exception as e:
             logger.error(f"[web_read_page] failed: {e}", e=e)
