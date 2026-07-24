@@ -3,9 +3,12 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
+from zhenxun.services.ai.core.models import ModelModality
+from zhenxun.services.ai.llm.system.capabilities import get_model_capabilities
 from zhenxun.services.log import logger
 
 from ...models import ChatMessage, ChatSession
+from ..media.image_analyzer import describe_image
 
 if TYPE_CHECKING:
     from ..context import ChatPluginContext
@@ -45,13 +48,24 @@ async def get_group_info_data(group_id: int, fallback_name: str | None = None) -
     return {"group_name": fallback_name, "member_count": None}
 
 
-async def get_humanize_contexts(humanize, session_id: str, user_name: str, history: list, trigger_user_id: int | None = None) -> dict:
+async def get_humanize_contexts(
+    humanize,
+    session_id: str,
+    user_name: str,
+    history: list,
+    trigger_user_id: int | None = None,
+) -> dict:
     topic_context = ""
     if getattr(humanize, "topic_tracker", None):
         topic_context = humanize.topic_tracker.get_topic_context(session_id) or ""
     expression_context = ""
     if getattr(humanize, "expression_learner", None) and trigger_user_id:
-        expression_context = humanize.expression_learner.get_expression_context_for_user(trigger_user_id, user_name) or ""
+        expression_context = (
+            humanize.expression_learner.get_expression_context_for_user(
+                trigger_user_id, user_name
+            )
+            or ""
+        )
     return {
         "memory_context": None,
         "topic_context": topic_context or None,
@@ -59,7 +73,21 @@ async def get_humanize_contexts(humanize, session_id: str, user_name: str, histo
     }
 
 
-def build_tool_context(plugin_ctx: "ChatPluginContext", event: Any, self_id: int, session_id: str, group_id: int | None, user_id: int, config, ai_service, db, bot_role: str, target_message, humanize) -> Any:
+def build_tool_context(
+    plugin_ctx: "ChatPluginContext",
+    event: Any,
+    self_id: int,
+    session_id: str,
+    group_id: int | None,
+    user_id: int,
+    config,
+    ai_service,
+    db,
+    bot_role: str,
+    target_message,
+    humanize,
+    pending_image_urls: list[str] | None = None,
+) -> Any:
     from ..tools.context import ToolContext
 
     return ToolContext(
@@ -74,6 +102,7 @@ def build_tool_context(plugin_ctx: "ChatPluginContext", event: Any, self_id: int
         trigger_skill_role="member",
         bot_role=bot_role,
         target_message=target_message,
+        pending_image_urls=pending_image_urls or [],
     )
 
 
@@ -136,12 +165,30 @@ async def finalize_chat_turn(
                 logger.warning(f"[finalize_chat_turn] save bot message failed: {e}")
 
     try:
-        await ChatSession.filter(id=session_id).update(updated_at=int(time.time() * 1000))
+        await ChatSession.filter(id=session_id).update(
+            updated_at=int(time.time() * 1000)
+        )
     except Exception:
         pass
 
 
-async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None, user_id: int, content: str, user_name: str, user_role: str, bot, self_id: int, bot_role: str, bot_nickname: str, group_name: str | None, member_count: int | None) -> None:
+async def process_chat(
+    plugin_ctx,
+    event,
+    session_id: str,
+    group_id: int | None,
+    user_id: int,
+    content: str,
+    user_name: str,
+    user_role: str,
+    bot,
+    self_id: int,
+    bot_role: str,
+    bot_nickname: str,
+    group_name: str | None,
+    member_count: int | None,
+    media_urls: list[str] | None = None,
+) -> None:
     from ..context import TargetMessage
 
     target_message = TargetMessage(
@@ -154,7 +201,9 @@ async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None,
 
     cfg = await plugin_ctx.get_config(group_id)
     history = await get_group_history_messages(
-        group_id=group_id or 0, session_id=session_id, limit=getattr(cfg, "historyCount", 100)
+        group_id=group_id or 0,
+        session_id=session_id,
+        limit=getattr(cfg, "historyCount", 100),
     )
 
     tool_ctx = build_tool_context(
@@ -170,6 +219,7 @@ async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None,
         bot_role,
         target_message,
         plugin_ctx.humanize,
+        pending_image_urls=media_urls or [],
     )
 
     contexts = await get_humanize_contexts(
@@ -178,8 +228,33 @@ async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None,
 
     from .run import run_chat
 
-    result = await plugin_ctx.run_with_rate_limit_guard(
-        lambda: run_chat(
+    async def _run_chat_with_media():
+        if media_urls:
+            main_model = getattr(cfg, "mainModel", "") or ""
+            main_accepts_image = get_model_capabilities(
+                main_model
+            ).accepts_input(ModelModality.IMAGE)
+
+            if not main_accepts_image:
+                # 主模型不支持图片时，才使用视觉工作模型做文字化降级。
+                tool_ctx.pending_image_urls = []
+                vision_model = getattr(cfg, "multimodalWorkingModel", None) or ""
+                descriptions: list[str] = []
+                if getattr(cfg, "enableMediaRecognition", True):
+                    for image_url in media_urls:
+                        analyzed = await describe_image(None, image_url, vision_model)
+                        if analyzed.get("success") and analyzed.get("description"):
+                            descriptions.append(analyzed["description"])
+
+                if descriptions:
+                    target_message.content = (
+                        f"{content}\n\n[视觉模型识别的媒体内容]\n"
+                        + "\n".join(descriptions)
+                    ).strip()
+                elif not content.strip():
+                    target_message.content = "[图片内容未能识别]"
+
+        return await run_chat(
             ai=plugin_ctx.ai_instance,
             tool_ctx=tool_ctx,
             chat_history=history,
@@ -198,12 +273,19 @@ async def process_chat(plugin_ctx, event, session_id: str, group_id: int | None,
                     "memory_context": contexts.get("memory_context"),
                     "topic_context": contexts.get("topic_context"),
                     "expression_context": contexts.get("expression_context"),
-                    "reply_context": {"type": "reply", "targetUser": user_name, "targetMessage": content},
+                    "reply_context": {
+                        "type": "reply",
+                        "targetUser": user_name,
+                        "targetMessage": content,
+                    },
                 },
             )(),
             humanize=plugin_ctx.humanize,
             skill_manager=plugin_ctx.skill_manager,
-        ),
+        )
+
+    result = await plugin_ctx.run_with_rate_limit_guard(
+        _run_chat_with_media,
         context={"userId": user_id, "groupId": group_id, "label": "message"},
     )
 

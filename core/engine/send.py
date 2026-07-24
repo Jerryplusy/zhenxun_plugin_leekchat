@@ -12,14 +12,16 @@ from zhenxun.utils.platform import PlatformUtils
 async def _read_image_bytes(image: bytes | str | Path) -> bytes:
     if isinstance(image, bytes):
         return image
-    if isinstance(image, (str, Path)):
+    if isinstance(image, str | Path):
         path = Path(image)
         return await asyncio.to_thread(path.read_bytes)
     raise TypeError(f"unsupported image source: {type(image)}")
 
 
 def _normalize_image_source(image: bytes | str | Path) -> str:
-    if isinstance(image, str) and image.startswith(("file://", "base64://", "data:", "http://", "https://")):
+    if isinstance(image, str) and image.startswith(
+        ("file://", "base64://", "data:", "http://", "https://")
+    ):
         return image
     if isinstance(image, Path) or (isinstance(image, str) and Path(image).is_file()):
         return f"file://{image}"
@@ -46,8 +48,9 @@ async def _send_image_with_fallback(
     image: bytes | str | Path,
     prefix_text: str = "",
 ) -> None:
-    from zhenxun.utils.message import MessageUtils
     from nonebot_plugin_alconna import Image, Target, Text
+
+    from zhenxun.utils.message import MessageUtils
 
     text_seg = Text(prefix_text) if prefix_text else None
     image_seg = Image(_normalize_image_source(image))
@@ -60,14 +63,14 @@ async def _send_image_with_fallback(
     msg = MessageUtils.build_message(segments)
     target: Any
     if group_id is not None:
-        target = Target("group", str(group_id))
+        target = Target.group(str(group_id))
     else:
-        target = Target("private", str(target_id))
+        target = Target.user(str(target_id))
 
     try:
         await msg.send(target=target, bot=bot)
-    except Exception as e:
-        if isinstance(image, (str, Path)):
+    except Exception:
+        if isinstance(image, str | Path):
             data_url = _file_to_base64_data_url(Path(image))
             segments = [text_seg, Image(data_url)] if text_seg else [Image(data_url)]
             fallback_msg = MessageUtils.build_message(segments)
@@ -82,8 +85,6 @@ async def send_text_message(
     user_id: int,
     text: str,
 ) -> None:
-    from zhenxun.utils.message import MessageUtils
-
     if group_id is not None:
         await PlatformUtils.send_message(
             bot=bot, user_id=None, group_id=str(group_id), message=text
@@ -100,15 +101,16 @@ async def send_ai_response(
     messages: list[str],
     sent_indices: set[int] | None = None,
 ) -> None:
-    from zhenxun.utils.message import MessageUtils
     from nonebot_plugin_alconna import Target
+
+    from zhenxun.utils.message import MessageUtils
 
     for i, msg_text in enumerate(messages):
         if sent_indices and i in sent_indices:
             continue
         if not msg_text or not msg_text.strip():
             continue
-        target = Target("group", str(group_id))
+        target = Target.group(str(group_id))
         msg = MessageUtils.build_message(msg_text)
         try:
             await msg.send(target=target, bot=bot)

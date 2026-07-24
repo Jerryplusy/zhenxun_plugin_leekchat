@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from zhenxun.services.ai.core.models import ModelModality
 from zhenxun.services.ai.llm.manager import get_default_model, list_available_models
+from zhenxun.services.ai.llm.system.capabilities import get_model_capabilities
 from zhenxun.services.log import logger
 
 
@@ -27,16 +29,8 @@ def _resolve_model_id(full_name: str | None) -> str:
 def _find_model_capability(full_name: str | None) -> tuple[str | None, bool]:
     if not full_name:
         return None, False
-    for entry in list_available_models():
-        if entry.get("full_name", "").lower() == full_name.lower():
-            caps = entry.get("capabilities") or {}
-            modalities = caps.get("input_modalities") or []
-            if not modalities and entry.get("is_multimodal") is not None:
-                is_mm = bool(entry.get("is_multimodal"))
-            else:
-                is_mm = "image" in modalities or "vision" in modalities
-            return full_name, is_mm
-    return full_name, False
+    capabilities = get_model_capabilities(full_name)
+    return full_name, capabilities.accepts_input(ModelModality.IMAGE)
 
 
 def resolve_role_instances(

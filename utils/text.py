@@ -14,10 +14,18 @@ def strip_think_blocks(text: str) -> str:
 
 def clean_markers(text: str) -> str:
     cleaned = strip_think_blocks(text)
-    cleaned = re.sub(r"<Ai>\s*<think>[\s\S]*?</think></Ai>", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"<｜｜DSML｜｜tool_calls>[\s\S]*?</｜｜DSML｜｜tool_calls>", "", cleaned)
-    cleaned = re.sub(r"<｜｜DSML｜｜invoke[^>]*>[\s\S]*?</｜｜DSML｜｜invoke>", "", cleaned)
-    cleaned = re.sub(r"<｜｜DSML｜｜parameter[^>]*>[\s\S]*?</｜｜DSML｜｜parameter>", "", cleaned)
+    cleaned = re.sub(
+        r"<Ai>\s*<think>[\s\S]*?</think></Ai>", "", cleaned, flags=re.IGNORECASE
+    )
+    cleaned = re.sub(
+        r"<｜｜DSML｜｜tool_calls>[\s\S]*?</｜｜DSML｜｜tool_calls>", "", cleaned
+    )
+    cleaned = re.sub(
+        r"<｜｜DSML｜｜invoke[^>]*>[\s\S]*?</｜｜DSML｜｜invoke>", "", cleaned
+    )
+    cleaned = re.sub(
+        r"<｜｜DSML｜｜parameter[^>]*>[\s\S]*?</｜｜DSML｜｜parameter>", "", cleaned
+    )
     return cleaned.strip()
 
 
@@ -27,6 +35,13 @@ def is_group_allowed(group_id: int, cfg: Any) -> bool:
     if whitelist:
         return int(group_id) in whitelist
     return int(group_id) not in blacklist
+
+
+def is_message_triggered(event: Any) -> bool:
+    """群聊仅处理 NoneBot 已判定为与机器人相关的消息。"""
+    if getattr(event, "message_type", "") != "group":
+        return True
+    return bool(getattr(event, "to_me", False))
 
 
 def extract_message_text(event: Any) -> str:
@@ -46,6 +61,28 @@ def extract_message_text(event: Any) -> str:
                 parts.append(getattr(seg, "text", "") or seg.data.get("text", ""))
         return "".join(parts)
     return str(raw or "")
+
+
+def extract_image_urls(event: Any) -> list[str]:
+    """提取 OneBot 消息中的图片 URL，供视觉模型使用。"""
+    message = getattr(event, "message", None)
+    if not isinstance(message, list):
+        return []
+
+    urls: list[str] = []
+    for segment in message:
+        if isinstance(segment, dict):
+            segment_type = segment.get("type")
+            data = segment.get("data") or {}
+        else:
+            segment_type = getattr(segment, "type", None)
+            data = getattr(segment, "data", None) or {}
+        if segment_type != "image" or not isinstance(data, dict):
+            continue
+        url = data.get("url") or data.get("file")
+        if url and str(url) not in urls:
+            urls.append(str(url))
+    return urls
 
 
 def get_user_name(event: Any) -> str:

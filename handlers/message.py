@@ -4,11 +4,17 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.log import logger
-from zhenxun.utils.platform import PlatformUtils
 
 from ..core.engine import process_chat
 from ..models import ChatMessage
-from ..utils import extract_message_text, get_role, get_user_name, is_group_allowed
+from ..utils import (
+    extract_image_urls,
+    extract_message_text,
+    get_role,
+    get_user_name,
+    is_group_allowed,
+    is_message_triggered,
+)
 
 if TYPE_CHECKING:
     from ..core.context import ChatPluginContext
@@ -23,11 +29,15 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
     if user_id == self_id:
         return
 
+    if not is_message_triggered(event):
+        return
+
     is_group = getattr(event, "message_type", "") == "group"
     group_id = getattr(event, "group_id", None) if is_group else None
 
     text = extract_message_text(event)
-    if not text.strip():
+    image_urls = extract_image_urls(event)
+    if not text.strip() and not image_urls:
         return
 
     cfg = await plugin_ctx.get_config(group_id)
@@ -35,7 +45,6 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
         return
 
     if text.strip() == "/重置会话":
-        from ..core.context import TargetMessage
 
         await plugin_ctx.session_manager.reset_bot_messages(
             f"group:{group_id}" if group_id else f"personal:{user_id}"
@@ -44,7 +53,10 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
             plugin_ctx.group_structured_history.clear(f"group:{group_id}")
         else:
             plugin_ctx.group_structured_history.clear(f"personal:{user_id}")
-        await bot.send_group_msg(group_id=group_id, message="已清除本会话中 AI 发送的消息~") if group_id else None
+        if group_id:
+            await bot.send_group_msg(
+                group_id=group_id, message="已清除本会话中 AI 发送的消息~"
+            )
         return
 
     user_name = get_user_name(event)
@@ -75,7 +87,9 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
 
     bot_role = "member"
     try:
-        member = await bot.get_group_member_info(group_id=group_id, user_id=self_id, no_cache=True)
+        member = await bot.get_group_member_info(
+            group_id=group_id, user_id=self_id, no_cache=True
+        )
         bot_role = (getattr(member, "role", "") or "member").lower()
     except Exception:
         pass
@@ -118,5 +132,6 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
             bot_nickname=bot_nickname,
             group_name=group_name,
             member_count=member_count,
+            media_urls=image_urls,
         ),
     )

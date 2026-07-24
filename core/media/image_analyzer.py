@@ -12,22 +12,28 @@ async def describe_image(
     raw_message: str | None = None,
 ) -> dict:
     """异步调用多模态工作模型描述图片"""
-    if ai is None:
-        return {"success": False, "error": "AI instance not available"}
     try:
         from zhenxun.services.ai.core.messages import LLMMessage
         from zhenxun.services.ai.core.messages.parts import ImagePart, TextPart
+        from zhenxun.services.ai.llm import generate as ai_generate
 
+        if not model_name:
+            return {"success": False, "error": "视觉模型未配置"}
         prompt = "请简要描述这张图片的内容，重点描述用户可能关心的关键信息。"
         msg = LLMMessage.user([TextPart(text=prompt), ImagePart(url=image_url)])
-        resp = await ai.generate(messages=[msg], model=model_name)
+        if ai is not None:
+            resp = await ai.generate(messages=[msg], model=model_name)
+        else:
+            resp = await ai_generate(messages=[msg], model=model_name)
         return {"success": True, "description": resp.text or ""}
     except Exception as e:
         logger.error(f"[image_analyzer] describe_image failed: {e}", e=e)
         return {"success": False, "error": str(e)}
 
 
-async def process_image(ai, image_url: str, model_name: str | None, db, run_ai_request) -> None:
+async def process_image(
+    ai, image_url: str, model_name: str | None, db, run_ai_request
+) -> None:
     """异步处理图片：调用工作模型生成描述并写库"""
     try:
         result = await run_ai_request(
