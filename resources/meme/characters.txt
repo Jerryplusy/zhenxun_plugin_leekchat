@@ -1,0 +1,19 @@
+# leekchat 表情包资源目录
+#
+# 在这里为每个角色创建子目录，并将表情包文件放在对应子目录下。
+#
+# 目录结构示例：
+# resources/meme/
+# ├── characters.txt      <- 本文件
+# ├── miku/               <- 角色名作为子目录名
+# │   ├── happy_001.gif
+# │   ├── happy_002.png
+# │   └── sad_001.jpg
+# ├── luka/
+# │   └── *.gif
+# └── len/
+#     └── *.png
+#
+# 配置：
+# - 在 configs/personalization.py 的 emoji.characters 中列出要使用的角色名
+# - 留空则扫描所有子目录
