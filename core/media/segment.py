@@ -52,12 +52,12 @@ def is_media_analysis_blocked(config: Any, user_id: int) -> bool:
 
 
 def build_history_media_options(*_args, **_kwargs) -> dict:
-    """占位 - 构建历史媒体处理选项。"""
+    """占位 - 构建历史媒体处理选项"""
     return {}
 
 
 async def get_segment_source_candidates(segment: Any) -> list[str]:
-    """从消息段提取媒体候选 URL。"""
+    """从消息段提取媒体候选 URL"""
     url = get_segment_url(segment)
     return [url] if url else []
 

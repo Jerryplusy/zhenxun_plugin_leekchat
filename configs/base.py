@@ -114,26 +114,6 @@ class RetentionConfig(BaseModel):
     cleanupIntervalMs: int = 60 * 60 * 1000
 
 
-class GroupOverrides(BaseModel):
-    emoji: dict | None = None
-    expression: dict | None = None
-    retention: dict | None = None
-    memory: dict | None = None
-    topic: dict | None = None
-    planner: dict | None = None
-    audio: dict | None = None
-    searxng: dict | None = None
-    webReader: dict | None = None
-    dynamicDelay: dict | None = None
-    enableMarkdownScreenshot: bool | None = None
-    enableMediaRecognition: bool | None = None
-    allowedExternalSkills: list[str] | None = None
-
-
-class GroupsFile(BaseModel):
-    groups: dict[str, GroupOverrides] = Field(default_factory=dict)
-
-
 class LeekchatConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -182,8 +162,6 @@ class LeekchatConfig(BaseModel):
     workingModel: str = ""
     multimodalWorkingModel: str = ""
     isMultimodal: bool = True
-
-    groupsFile: GroupsFile = Field(default_factory=GroupsFile)
 
 
 BASE_CONFIG: dict = {

@@ -10,7 +10,7 @@ VIDEO_FULL_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
 
 
 async def summarize_history_video(sources: list[str], options: dict | None = None) -> dict:
-    """占位 - 视频摘要写入缓存。"""
+    """占位 - 视频摘要写入缓存"""
     logger.info(f"[history_media] summarize_video sources={len(sources)}")
     return {"success": True, "summary": "[video placeholder]"}
 

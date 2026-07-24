@@ -11,7 +11,7 @@ async def describe_image(
     model_name: str | None,
     raw_message: str | None = None,
 ) -> dict:
-    """异步调用多模态工作模型描述图片。"""
+    """异步调用多模态工作模型描述图片"""
     if ai is None:
         return {"success": False, "error": "AI instance not available"}
     try:
@@ -28,7 +28,7 @@ async def describe_image(
 
 
 async def process_image(ai, image_url: str, model_name: str | None, db, run_ai_request) -> None:
-    """异步处理图片：调用工作模型生成描述并写库。"""
+    """异步处理图片：调用工作模型生成描述并写库"""
     try:
         result = await run_ai_request(
             lambda: describe_image(ai, image_url, model_name)

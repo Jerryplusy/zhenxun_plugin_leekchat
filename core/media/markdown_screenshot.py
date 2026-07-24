@@ -9,7 +9,7 @@ MARKDOWN_CSS = PLUGIN_ROOT / "resources" / "markdown" / "style.css"
 
 
 async def render_markdown_to_image(markdown_content: str) -> bytes | None:
-    """调 zhenxun 渲染服务将 markdown 转为 PNG 字节。"""
+    """调 zhenxun 渲染服务将 markdown 转为 PNG 字节"""
     try:
         from zhenxun.services.renderer import renderer_service
 

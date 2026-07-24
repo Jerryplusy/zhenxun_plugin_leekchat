@@ -26,8 +26,8 @@ class EmotionAgent:
         self._config_provider = config_provider
         self._state: dict[str, EmotionState] = {}
 
-    def _default_emotion(self, group_id: int | None) -> str:
-        cfg = self._config_provider(group_id)
+    def _default_emotion(self) -> str:
+        cfg = self._config_provider()
         return getattr(getattr(cfg, "emotion", None), "defaultEmotion", "default") or "default"
 
     def get_emotion(self, session_id: str) -> str | None:
@@ -45,7 +45,7 @@ class EmotionAgent:
         return _EMOTION_TAG_RE.sub("", text or "").strip()
 
     async def refresh_if_needed(self, session_id: str, bot_nickname: str, chat_history: list, target_message) -> EmotionState:
-        cfg = self._config_provider(None)
+        cfg = self._config_provider()
         interval_ms = getattr(getattr(cfg, "emotion", None), "updateIntervalMs", 60 * 60_000)
         now = int(time.time() * 1000)
         existing = self._state.get(session_id)
@@ -58,10 +58,10 @@ class EmotionAgent:
         return state
 
     async def _decide_emotion(self, bot_nickname: str, chat_history: list, target_message) -> str:
-        cfg = self._config_provider(None)
+        cfg = self._config_provider()
         emotions = getattr(getattr(cfg, "emotion", None), "emotions", {}) or {}
         if not self._work_ai or not emotions:
-            return self._default_emotion(None)
+            return self._default_emotion()
 
         history_lines = []
         for msg in chat_history[-10:]:
@@ -98,4 +98,4 @@ class EmotionAgent:
                     return name
         except Exception as e:
             logger.warning(f"[EmotionAgent] decide failed: {e}")
-        return self._default_emotion(None)
+        return self._default_emotion()

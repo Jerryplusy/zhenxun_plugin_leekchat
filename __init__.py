@@ -55,14 +55,12 @@ async def _init_plugin() -> None:
     base = config["base"]
     settings = config["settings"]
     personalization = config["personalization"]
-    groups = config["groups"]
 
     config_provider = ChatConfigProvider(
         base_config=base,
         settings_config=settings,
         personalization_config=personalization,
     )
-    config_provider.set_groups_config(groups)
 
     resolved = resolve_role_instances(
         main_model=config["main_model"],
@@ -121,9 +119,12 @@ async def _init_plugin() -> None:
 
     session_turn_scheduler = SessionTurnScheduler()
 
+    async def _get_config(group_id: int | None = None):
+        return config_provider()
+
     plugin_ctx = ChatPluginContext(
         config_provider=config_provider,
-        get_config=config_provider,
+        get_config=_get_config,
         db=db_proxy,
         ai_instance=None,
         work_ai_instance=None,

@@ -25,7 +25,7 @@ async def run_chat(
     skill_manager,
     structured_history=None,
 ) -> ChatResult:
-    """主对话循环 - 调 LLM，发送响应。"""
+    """主对话循环 - 调 LLM，发送响应"""
     if ai is None:
         return ChatResult()
 

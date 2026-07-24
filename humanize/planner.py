@@ -30,7 +30,7 @@ class ActionPlanner:
         merged_content: str,
         is_idle_debug: bool = False,
     ) -> PlannerResult:
-        cfg = self._config_provider(None)
+        cfg = self._config_provider()
         if not getattr(getattr(cfg, "planner", None), "enabled", False):
             return PlannerResult(action="reply", reason="planner disabled")
 

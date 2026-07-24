@@ -44,7 +44,7 @@ def resolve_role_instances(
     working_model: str,
     multimodal_working_model: str,
 ) -> RoleInstances | None:
-    """从 zhenxun AI.PROVIDERS 解析 main/working/vision 三个角色。"""
+    """从 zhenxun AI.PROVIDERS 解析 main/working/vision 三个角色"""
     default = get_default_model("chat") or ""
 
     main = main_model or default
