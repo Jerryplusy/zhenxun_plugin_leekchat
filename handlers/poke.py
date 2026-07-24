@@ -17,8 +17,7 @@ POKE_COOLDOWN_MS = 10 * 60_000
 _poke_cooldowns: dict[int, int] = {}
 
 
-async def handle_poke(plugin_ctx: "ChatPluginContext", event: Any) -> None:
-    bot = getattr(event, "bot", None)
+async def handle_poke(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) -> None:
     self_id = getattr(event, "self_id", None)
     if bot is None or not self_id:
         return

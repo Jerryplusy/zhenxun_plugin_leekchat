@@ -14,8 +14,7 @@ if TYPE_CHECKING:
     from ..core.context import ChatPluginContext
 
 
-async def handle_message(plugin_ctx: "ChatPluginContext", event: Any) -> None:
-    bot = getattr(event, "bot", None)
+async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) -> None:
     self_id = getattr(event, "self_id", None)
     if bot is None or not self_id:
         return

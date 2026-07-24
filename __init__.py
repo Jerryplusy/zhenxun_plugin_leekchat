@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from nonebot import on_message, on_notice
-from nonebot.adapters.onebot.v11 import MessageEvent, NoticeEvent
+from nonebot.adapters.onebot.v11 import Bot, MessageEvent, NoticeEvent
 from nonebot.permission import SUPERUSER
 
 from zhenxun.services.log import logger
@@ -200,17 +200,17 @@ _poke_handler = on_notice(priority=10)
 
 
 @_message_handler.handle()
-async def _(event: MessageEvent) -> None:
+async def _(bot: Bot, event: MessageEvent) -> None:
     if _plugin_context is None:
         return
-    await handle_message(_plugin_context, event)
+    await handle_message(_plugin_context, event, bot)
 
 
 @_poke_handler.handle()
-async def _(event: NoticeEvent) -> None:
+async def _(bot: Bot, event: NoticeEvent) -> None:
     if _plugin_context is None:
         return
-    await handle_poke(_plugin_context, event)
+    await handle_poke(_plugin_context, event, bot)
 
 
 def get_chat_runtime() -> ChatRuntime | None:
