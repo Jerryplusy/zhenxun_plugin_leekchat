@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-import time
 from typing import Any
 
 from zhenxun.services.ai.core.messages import LLMMessage, TextPart
@@ -10,9 +8,10 @@ from zhenxun.services.log import logger
 
 from ..context import ChatMessage, ChatResult, PromptCtx
 from ..llm_caller import LLMCaller
-from ..prompt import build_dynamic_user_context, build_static_system_prompt
 from ..media import consume_complete_stream_units
+from ..prompt import build_dynamic_user_context, build_static_system_prompt
 from .stream import create_think_tag_stream_filter
+from .stream_parser import parse_line_markers
 
 
 async def run_chat(
@@ -60,7 +59,14 @@ async def run_chat(
     dynamic_user_context = build_dynamic_user_context(dynamic_ctx)
 
     pending_image_urls = getattr(tool_ctx, "pending_image_urls", []) or []
-    user_parts: list[Any] = [TextPart(text=f"{dynamic_user_context}\n\n---\n\n[User message]\n{target_message.content or ''}")]
+    user_parts: list[Any] = [
+        TextPart(
+            text=(
+                f"{dynamic_user_context}\n\n---\n\n[User message]\n"
+                f"{target_message.content or ''}"
+            )
+        )
+    ]
     for url in pending_image_urls:
         user_parts.append(ImagePart(url=url))
     messages: list[LLMMessage] = [
@@ -69,7 +75,8 @@ async def run_chat(
     ]
 
     logger.info(
-        f"[run_chat] session={tool_ctx.session_id} user={target_message.user_name}({target_message.user_id})"
+        f"[run_chat] session={tool_ctx.session_id} "
+        f"user={target_message.user_name}({target_message.user_id})"
     )
 
     caller = LLMCaller()
@@ -101,12 +108,19 @@ async def run_chat(
             stream=bool(getattr(cfg, "stream", True)),
             on_delta=_on_delta,
             temperature=getattr(cfg, "temperature", 0.8),
+            debug=bool(getattr(cfg, "debug", False)),
         )
     except Exception as e:
         logger.error(f"[run_chat] LLM failed: {e}", e=e)
         return ChatResult(messages=[""])
 
     raw_text = response.text or ""
+
+    response_markers = parse_line_markers(raw_text)
+    if response_markers.emotion_name:
+        humanize.emotion_agent.set_emotion(
+            tool_ctx.session_id, response_markers.emotion_name
+        )
 
     if getattr(cfg, "stream", True):
         tail = think_filter["push"]("", True)
@@ -127,7 +141,11 @@ async def run_chat(
 
     from ..media import split_outgoing_units
 
-    final_messages = [u for u in split_outgoing_units(sticker.cleaned_text) if u.strip() and u.strip() != "---"]
+    final_messages = [
+        unit
+        for unit in split_outgoing_units(sticker.cleaned_text)
+        if unit.strip() and unit.strip() != "---"
+    ]
 
     return ChatResult(
         messages=final_messages,

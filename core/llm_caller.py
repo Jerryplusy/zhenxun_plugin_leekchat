@@ -7,7 +7,7 @@ from zhenxun.services.ai.core.messages import ChatResponse, LLMMessage
 from zhenxun.services.ai.llm import generate as ai_generate
 from zhenxun.services.ai.llm.builder import IntentBuilder
 from zhenxun.services.log import logger
-
+from zhenxun.utils.pydantic_compat import model_dump
 
 OnTextDelta = Callable[[str], Awaitable[None]]
 
@@ -24,12 +24,25 @@ class LLMCaller:
         max_tokens: int | None = None,
         tools: list[Any] | None = None,
         timeout: float | None = None,
+        debug: bool = False,
     ) -> ChatResponse:
         config = IntentBuilder()
         if temperature is not None:
             config = config.config_core(temperature=temperature)
         if max_tokens is not None:
             config = config.config_core(max_tokens=max_tokens)
+
+        if debug:
+            request_debug = model_dump(config.build())
+            request_debug.update(
+                {
+                    "model": model_name,
+                    "timeout": timeout,
+                    "tools": tools,
+                    "messages": [model_dump(message) for message in messages],
+                }
+            )
+            logger.info(f"[leekchat][debug][main] LLM 请求: {request_debug}")
 
         try:
             response = await ai_generate(
@@ -42,6 +55,9 @@ class LLMCaller:
         except Exception as e:
             logger.error(f"LLM 调用失败 model={model_name}: {e}", e=e)
             raise
+
+        if debug:
+            logger.info(f"[leekchat][debug][main] LLM 回复: {model_dump(response)}")
 
         if stream and on_delta and response.text:
             text = strip_think_blocks(response.text)

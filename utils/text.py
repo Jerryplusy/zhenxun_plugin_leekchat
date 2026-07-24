@@ -29,6 +29,30 @@ def clean_markers(text: str) -> str:
     return cleaned.strip()
 
 
+def sanitize_brackets(text: str) -> str:
+    """清理 AI 文本中半成对方括号：整对 ``[...]`` 删除，孤立 ``[`` 自动闭合，孤立 ``]`` 删除。"""
+    if not text:
+        return text
+
+    open_stack: list[int] = []
+    chars: list[str] = []
+
+    for ch in text:
+        if ch == "[":
+            open_stack.append(len(chars))
+            chars.append(ch)
+        elif ch == "]":
+            if open_stack:
+                open_idx = open_stack.pop()
+                del chars[open_idx:]
+                open_stack = [i for i in open_stack if i < open_idx]
+        else:
+            chars.append(ch)
+
+    chars.extend("]" * len(open_stack))
+    return "".join(chars)
+
+
 def is_group_allowed(group_id: int, cfg: Any) -> bool:
     blacklist = set(cfg.blacklistGroups or [])
     whitelist = set(cfg.whitelistGroups or [])

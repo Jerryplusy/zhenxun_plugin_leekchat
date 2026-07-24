@@ -9,6 +9,7 @@ from zhenxun.services.log import logger
 
 from ...models import ChatMessage, ChatSession
 from ..media.image_analyzer import describe_image
+from .stream_parser import parse_line_markers
 
 if TYPE_CHECKING:
     from ..context import ChatPluginContext
@@ -142,7 +143,12 @@ async def finalize_chat_turn(
 
     messages = getattr(result, "messages", []) or []
     if messages and group_id is not None:
-        await send_ai_response(bot, group_id, messages)
+        await send_ai_response(
+            bot,
+            group_id,
+            messages,
+            default_reply_id=getattr(tool_ctx.target_message, "message_id", None),
+        )
 
     emoji_path = getattr(result, "emoji_path", None)
     if emoji_path and group_id is not None:
@@ -154,7 +160,7 @@ async def finalize_chat_turn(
                 await ChatMessage.create(
                     session_id=session_id,
                     role="assistant",
-                    content=msg,
+                    content=parse_line_markers(msg).clean_text,
                     user_id=self_id,
                     user_name=cfg.nicknames[0] if cfg.nicknames else "Bot",
                     user_role="member",
@@ -196,6 +202,7 @@ async def process_chat(
         user_id=user_id,
         user_role=user_role,
         content=content,
+        message_id=getattr(event, "message_id", None),
         timestamp=int(time.time() * 1000),
     )
 

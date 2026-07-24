@@ -9,6 +9,51 @@ from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
 
 
+async def _build_ai_message(
+    text: str,
+    default_reply_id: int | None = None,
+):
+    """将 AI 动作标记转换为真正的通用消息段。"""
+    from nonebot_plugin_alconna import At, Image, Reply, Text
+
+    from zhenxun.plugins.zhenxun_plugin_leekchat.core.engine.stream_parser import (
+        parse_line_markers,
+    )
+    from zhenxun.plugins.zhenxun_plugin_leekchat.core.media.markdown_message import (
+        extract_standalone_markdown_block,
+    )
+    from zhenxun.plugins.zhenxun_plugin_leekchat.core.media.markdown_screenshot import (
+        render_markdown_to_image,
+    )
+    from zhenxun.utils.message import MessageUtils
+
+    parsed = parse_line_markers(text)
+    segments = []
+
+    if parsed.reply_requested:
+        quote_id = parsed.quote_id or default_reply_id
+        if quote_id is not None:
+            segments.append(Reply(id=str(quote_id)))
+
+    segments.extend(
+        At(flag="user", target=str(user_id)) for user_id in parsed.at_users
+    )
+
+    markdown = extract_standalone_markdown_block(parsed.clean_text)
+    if markdown is not None:
+        rendered = await render_markdown_to_image(markdown)
+        if rendered is not None:
+            segments.append(Image(raw=rendered))
+        elif markdown:
+            segments.append(Text(markdown))
+    elif parsed.clean_text:
+        segments.append(Text(parsed.clean_text))
+
+    if not segments:
+        return None
+    return MessageUtils.build_message(segments)
+
+
 async def _read_image_bytes(image: bytes | str | Path) -> bytes:
     if isinstance(image, bytes):
         return image
@@ -100,18 +145,35 @@ async def send_ai_response(
     group_id: int,
     messages: list[str],
     sent_indices: set[int] | None = None,
+    default_reply_id: int | None = None,
 ) -> None:
-    from nonebot_plugin_alconna import Target
-
-    from zhenxun.utils.message import MessageUtils
-
     for i, msg_text in enumerate(messages):
         if sent_indices and i in sent_indices:
             continue
         if not msg_text or not msg_text.strip():
             continue
+        from zhenxun.plugins.zhenxun_plugin_leekchat.core.engine.stream_parser import (
+            parse_line_markers,
+        )
+
+        parsed = parse_line_markers(msg_text)
+        if parsed.poke_users:
+            for user_id in parsed.poke_users:
+                try:
+                    await bot.call_api(
+                        "send_poke",
+                        group_id=int(group_id),
+                        user_id=int(user_id),
+                    )
+                except Exception as e:
+                    logger.warning(f"[send_ai_response] poke failed: {e}", e=e)
+
+        from nonebot_plugin_alconna import Target
+
         target = Target.group(str(group_id))
-        msg = MessageUtils.build_message(msg_text)
+        msg = await _build_ai_message(msg_text, default_reply_id)
+        if msg is None:
+            continue
         try:
             await msg.send(target=target, bot=bot)
         except Exception as e:
