@@ -16,6 +16,9 @@ class RateLimitGuard:
     def is_blocked(self) -> bool:
         return self._blocked
 
+    async def __call__(self, request, context: dict | None = None) -> None:
+        return await self.run(request, context)
+
     async def run(self, request, context: dict | None = None) -> None:
         if context is None:
             context = {}

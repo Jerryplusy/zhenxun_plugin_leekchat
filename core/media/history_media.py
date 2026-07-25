@@ -167,6 +167,8 @@ async def _summarize_video_by_full(
         )},
         {"type": "video_url", "video_url": {"url": data_url}},
     ]
+    from zhenxun.services.ai.llm.builder import IntentBuilder
+    config = IntentBuilder().config_core(temperature=0.3)
     resp = await ai_generate(
         messages=[
             {
@@ -180,7 +182,7 @@ async def _summarize_video_by_full(
             {"role": "user", "content": content},
         ],
         model=model_name,
-        temperature=0.3,
+        config=config,
     )
     return _normalize_summary(getattr(resp, "text", None))
 
@@ -206,6 +208,8 @@ async def _summarize_video_by_frames(
     for url in frames:
         content.append({"type": "image_url", "image_url": {"url": url, "detail": "auto"}})
 
+    from zhenxun.services.ai.llm.builder import IntentBuilder
+    config = IntentBuilder().config_core(temperature=0.3)
     resp = await ai_generate(
         messages=[
             {
@@ -219,7 +223,7 @@ async def _summarize_video_by_frames(
             {"role": "user", "content": content},
         ],
         model=model_name,
-        temperature=0.3,
+        config=config,
     )
     return _normalize_summary(getattr(resp, "text", None))
 
@@ -368,7 +372,7 @@ async def _save_sources(kind: str, content_hash: str, sources: list[str]) -> Non
 async def _run_with_guard(coro_fn, rate_limit_guard, rate_limit_context):
     if rate_limit_guard is None:
         return await coro_fn()
-    return await rate_limit_guard.run(
+    return await rate_limit_guard(
         coro_fn,
         context={**(rate_limit_context or {}), "label": "vision-video"},
     )
@@ -385,6 +389,8 @@ async def _summarize_text_content(
     user_text = (
         f"{label}原始内容：\n{truncated}\n\n请概括成一句适合放进聊天历史的中文摘要。"
     )
+    from zhenxun.services.ai.llm.builder import IntentBuilder
+    config = IntentBuilder().config_core(temperature=0.3)
     resp = await ai_generate(
         messages=[
             {
@@ -398,7 +404,7 @@ async def _summarize_text_content(
             {"role": "user", "content": user_text},
         ],
         model=working_model,
-        temperature=0.3,
+        config=config,
     )
     return _normalize_summary(getattr(resp, "text", None))
 

@@ -125,13 +125,15 @@ async def describe_image(
         )
 
         async def _do_call():
-            kwargs = {"messages": [system_prompt, msg], "model": model_name, "temperature": 0.3}
+            from zhenxun.services.ai.llm.builder import IntentBuilder
+            config = IntentBuilder().config_core(temperature=0.3)
+            kwargs = {"messages": [LLMMessage.system(system_prompt), msg], "model": model_name, "config": config}
             if ai is not None:
                 return await ai.generate(**kwargs)
             return await ai_generate(**kwargs)
 
         if rate_limit_guard is not None:
-            resp = await rate_limit_guard.run(
+            resp = await rate_limit_guard(
                 _do_call,
                 context={**(rate_limit_context or {}), "label": "vision"},
             )
@@ -217,9 +219,6 @@ async def get_or_recognize_image(
     image_bytes = await _download_image_bytes(image_url, bot=bot)
     if image_bytes:
         ch = content_hash(image_bytes)
-        logger.info(
-            f"[image_analyzer] 下载完成 size={len(image_bytes)} content_sha256={ch[:12]} url={image_url[:80]}"
-        )
     else:
         ch = ""
         logger.warning(
@@ -242,9 +241,6 @@ async def get_or_recognize_image(
         logger.warning("[image_analyzer] 视觉模型未配置，跳过识别")
         return {"hash": ch, "description": "", "cached": False}
 
-    logger.info(
-        f"[image_analyzer] 开始视觉识别 content_sha256={(ch or '')[:12]} model={model_name} url={image_url[:80]}"
-    )
     result = await describe_image(
         None, image_url, model_name,
         rate_limit_guard=rate_limit_guard,
@@ -267,7 +263,7 @@ async def get_or_recognize_image(
             created_at=int(time.time() * 1000),
         )
         logger.info(
-            f"[image_analyzer] 识别完成并入库 content_sha256={(ch or '')[:12]} desc_len={len(description)}"
+            f"[image_analyzer] 识别完成: {description[:80]}"
         )
     except Exception as e:
         logger.warning(

@@ -160,7 +160,7 @@ async def _init_plugin() -> None:
         idle_check_manager=IdleCheckManager.__new__(IdleCheckManager),
         queue_processor=QueueProcessor.__new__(QueueProcessor),
         session_turn_scheduler=session_turn_scheduler,
-        run_with_rate_limit_guard=rate_limit_guard.run,
+        run_with_rate_limit_guard=rate_limit_guard,
         run_chat=run_chat,
         build_tool_context=build_tool_context,
         send_message=send_text_message,
