@@ -144,7 +144,7 @@ class LeekchatConfig(BaseModel):
     audioUsageConstraintStrength: StrengthT = "medium"
     markdownUsageConstraintStrength: StrengthT = "medium"
     groupStructuredHistoryTtlMs: int = 10 * 60_000
-    nicknames: list[str] = Field(default_factory=lambda: ["miku", "未来", "初音"])
+    nicknames: list[str] = Field(default_factory=lambda: ["真寻","小真寻"])
     cooldownAfterReplyMs: int = 20_000
     aiRequestLimits: AIRequestLimitConfig = Field(default_factory=AIRequestLimitConfig)
     dynamicDelay: DynamicDelayConfig = Field(default_factory=DynamicDelayConfig)
@@ -196,7 +196,7 @@ SETTINGS_CONFIG: dict = {
     "audioUsageConstraintStrength": "medium",
     "markdownUsageConstraintStrength": "medium",
     "groupStructuredHistoryTtlMs": 10 * 60_000,
-    "nicknames": ["miku", "未来", "初音"],
+    "nicknames": ["真寻","小真寻"],
     "cooldownAfterReplyMs": 20_000,
     "aiRequestLimits": AIRequestLimitConfig().model_dump(),
     "dynamicDelay": DynamicDelayConfig().model_dump(),
