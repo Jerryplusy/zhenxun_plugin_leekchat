@@ -5,6 +5,7 @@ from typing import Any
 from zhenxun.services.log import logger
 
 from ...core.web import read_web_page, search_web_with_searxng
+from .permissions import ToolPermission, ToolScope
 
 
 def build_web_search_tool(tool_ctx: Any) -> dict:
@@ -40,6 +41,8 @@ def build_web_search_tool(tool_ctx: Any) -> dict:
             "required": [],
         },
         "handler": lambda args: search_web_with_searxng(tool_ctx.config.searxng, args or {}),
+        "scope": ToolScope.ALL,
+        "min_permission": ToolPermission.MEMBER,
     }
 
 
@@ -79,28 +82,8 @@ def build_web_read_page_tool(tool_ctx: Any) -> dict:
             "required": ["url"],
         },
         "handler": handler,
+        "scope": ToolScope.ALL,
+        "min_permission": ToolPermission.MEMBER,
     }
 
 
-def build_recall_memory_tool(tool_ctx: Any) -> dict:
-    async def handler(args):
-        return {
-            "success": False,
-            "error": "TODO: recall_memory not implemented (Memory feature TODO in leekchat)",
-        }
-
-    return {
-        "name": "recall_memory",
-        "description": (
-            "Recall historical chat context. Currently TODO - the Memory feature is not "
-            "implemented yet in leekchat."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "question": {"type": "string", "description": "Recall question"}
-            },
-            "required": ["question"],
-        },
-        "handler": handler,
-    }

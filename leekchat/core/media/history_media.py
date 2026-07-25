@@ -154,32 +154,28 @@ async def _summarize_video_by_full(
     model_name: str,
     ai_generate,
 ) -> str:
-    import base64
+    from zhenxun.services.ai.core.messages import TextPart, VideoPart
+    from zhenxun.services.ai.core.messages.models import SystemMessage, UserMessage
 
     mime = _probe_mime(video_bytes)
-    data_url = f"data:{mime};base64,{base64.b64encode(video_bytes).decode('ascii')}"
-    content = [
-        {"type": "text", "text": (
-            "This is a video sent by someone in a chat. Summarize the video's content "
-            "in Chinese for later use as chat history context: describe the visible "
-            "people/objects/actions/scenes/on-screen text, and briefly explain what "
-            "the video is about. Stay factual and concise; state uncertainty honestly when unclear."
-        )},
-        {"type": "video_url", "video_url": {"url": data_url}},
-    ]
     from zhenxun.services.ai.llm.builder import IntentBuilder
     config = IntentBuilder().config_core(temperature=0.3)
     resp = await ai_generate(
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You summarize video content for a chat history. Describe only what "
-                    "the video actually shows, objectively and concisely. Do not invent "
-                    "information that is not present."
-                ),
-            },
-            {"role": "user", "content": content},
+            SystemMessage(content=[TextPart(text=(
+                "You summarize video content for a chat history. Describe only what "
+                "the video actually shows, objectively and concisely. Do not invent "
+                "information that is not present."
+            ))]),
+            UserMessage(content=[
+                TextPart(text=(
+                    "This is a video sent by someone in a chat. Summarize the video's content "
+                    "in Chinese for later use as chat history context: describe the visible "
+                    "people/objects/actions/scenes/on-screen text, and briefly explain what "
+                    "the video is about. Stay factual and concise; state uncertainty honestly when unclear."
+                )),
+                VideoPart(raw=video_bytes, mime_type=mime),
+            ]),
         ],
         model=model_name,
         config=config,
@@ -192,35 +188,33 @@ async def _summarize_video_by_frames(
     model_name: str,
     ai_generate,
 ) -> str:
+    from zhenxun.services.ai.core.messages import TextPart, ImagePart
+    from zhenxun.services.ai.core.messages.models import SystemMessage, UserMessage
+
     frames = await _extract_video_frames(video_url)
     if not frames:
         return VIDEO_FRAME_EXTRACTION_FALLBACK
 
-    content: list[dict] = [
-        {"type": "text", "text": (
+    content: list = [
+        TextPart(text=(
             f"These {len(frames)} frames were sampled evenly from a video sent in a chat. "
             "Summarize the video's likely content in Chinese for later use as chat history "
             "context: note the visible people/objects/actions/on-screen text, and infer "
             "what the video is about. Stay factual and concise; if the frames are "
             "ambiguous or insufficient, say so honestly."
-        )},
-    ]
-    for url in frames:
-        content.append({"type": "image_url", "image_url": {"url": url, "detail": "auto"}})
+        )),
+    ] + [ImagePart(url=url) for url in frames]
 
     from zhenxun.services.ai.llm.builder import IntentBuilder
     config = IntentBuilder().config_core(temperature=0.3)
     resp = await ai_generate(
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You summarize video content for a chat history from evenly sampled frames. "
-                    "Describe what the frames plausibly show, objectively and concisely. "
-                    "Do not invent information that is not present."
-                ),
-            },
-            {"role": "user", "content": content},
+            SystemMessage(content=[TextPart(text=(
+                "You summarize video content for a chat history from evenly sampled frames. "
+                "Describe what the frames plausibly show, objectively and concisely. "
+                "Do not invent information that is not present."
+            ))]),
+            UserMessage(content=content),
         ],
         model=model_name,
         config=config,
@@ -309,11 +303,15 @@ def _normalize_summary(value: str | None) -> str:
     return text[:500]
 
 
+def _normalize_source_key(source: str) -> str:
+    return _hash_source(source) if len(source) > 128 else source
+
+
 async def _get_cached_summary(sources: list[str]) -> str | None:
     from ...models import MediaSummary, MediaSummarySource
     try:
         for source in sources:
-            row = await MediaSummarySource.get_or_none(source_key=source)
+            row = await MediaSummarySource.get_or_none(source_key=_normalize_source_key(source))
             if row and row.summary and row.summary.summary:
                 summary = row.summary.summary
                 if summary == VIDEO_FRAME_EXTRACTION_FALLBACK:
@@ -359,7 +357,7 @@ async def _save_sources(kind: str, content_hash: str, sources: list[str]) -> Non
         for source in sources:
             try:
                 await MediaSummarySource.create(
-                    source_key=source,
+                    source_key=_normalize_source_key(source),
                     summary=summary_row,
                     created_at=int(asyncio.get_event_loop().time() * 1000) if hasattr(asyncio, "get_event_loop") else 0,
                 )

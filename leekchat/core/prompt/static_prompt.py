@@ -38,8 +38,6 @@ def _append_external_skills_section(lines: list[str], config, allowed_skills) ->
         builtin_descs.append("- web_search: 进行网页搜索")
     if getattr(getattr(config, "webReader", None), "enabled", False):
         builtin_descs.append("- web_read_page: 读取某个网页URL的内容")
-    if getattr(getattr(config, "memory", None), "enabled", False):
-        builtin_descs.append("- recall_memory: 回忆某内容，也可用于历史查询")
 
     plugin_list = (
         "\n".join(f"- {s['name']}: {s['description']}" for s in allowed_skills)

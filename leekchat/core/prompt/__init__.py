@@ -1,6 +1,5 @@
 from .dynamic_prompt import build_dynamic_user_context
 from .features import (
-    build_recall_memory_feature_section,
     build_web_read_feature_section,
     build_web_search_feature_section,
 )
@@ -14,7 +13,6 @@ from .static_prompt import build_static_system_prompt
 
 __all__ = [
     "build_dynamic_user_context",
-    "build_recall_memory_feature_section",
     "build_static_system_prompt",
     "build_web_read_feature_section",
     "build_web_search_feature_section",

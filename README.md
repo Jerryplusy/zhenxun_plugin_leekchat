@@ -17,9 +17,18 @@
 
 ## 关于三个类型的模型
 
-- 主模型是生成最终文本所用的模型，要求是智商和情商高，否则你的机器人会看上去没有脑子
+- 主模型是生成回复所用的模型，要求是聪明，否则你的机器人会看上去没有脑子
 - 工作模型是用于处理轻量任务的模型，调用频率远大于主模型，要求**便宜**+速度快
 - 视觉工作模型是用于处理聊天中的媒体内容（表情包、图片、视频、音频等）的模型，若开启聊天媒体识别调用频率会非常高，**请务必选择特价模型或关闭聊天媒体识别功能**
+
+### 模型使用推荐
+
+- 主模型：gpt-5.4+、gemini-3.0 flash+、claude 4.6 sonnet+、qwen3.7-plus、kimi-k2.7+、GLM5+
+
+> MiniMax-M3（模型无真寻人设，拟人效果强）、Deepseek-v4-pro（拟人效果差）
+
+- 工作模型：deepseek-v4-flash等
+- 视觉工作模型：doubao-seed-2.0-mini+、gpt-5.4-mini、mimo-2.5V等
 
 ## 关于token消耗
 
@@ -55,7 +64,7 @@
 - **Topic**：话题跟踪功能未实现（`humanize/topic.py`）
 - **Expression**：表达习惯学习功能未实现（`humanize/expression.py`）
 - **Audio**：语音消息合成未实现（`core/media/audio.py`）
-- **外部 Skills**：外部 Skill 加载机制未实现（`core/external_skills.py`）
+- **插件调用**：插件调用机制未实现（`core/external_skills.py`）
 - **各种细节优化**：插件来自 mioku，使用MiniMax-M3迁移，可能存在细节问题，有问题请提出issue。
 
 ## 配置

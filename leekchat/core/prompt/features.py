@@ -134,12 +134,3 @@ def build_web_read_feature_section(config, _tool_strength: str = "medium") -> st
 - Only set render_js=true when the page clearly needs JavaScript rendering, because it costs much more CPU and memory."""
 
 
-def build_recall_memory_feature_section(config) -> str:
-    if not getattr(getattr(config, "memory", None), "enabled", False):
-        return ""
-    return """
-### Memory Recall Tool
-- recall_memory: Delegate recall to a memory worker model. Pass a clear recall question and let the worker search historical logs.
-- Use recall_memory ONLY when there is explicit need to recall past content and required information is clearly missing from current context.
-- Do NOT call recall_memory for every question.
-- The worker returns historical logs with timestamps; treat them as past records, not newly sent messages."""

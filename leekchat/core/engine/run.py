@@ -28,6 +28,17 @@ def _strip_legacy_tool_markers(text: str) -> str:
     return _LEGACY_TOOL_RE.sub("", text or "").strip()
 
 
+def _build_available_tools_section(framework_tools: list) -> str:
+    if not framework_tools:
+        return ""
+    lines = ["## Available Tools", "You have access to the following tools:"]
+    for t in framework_tools:
+        name = getattr(t, "name", "?")
+        desc = getattr(t, "description", "") or ""
+        lines.append(f"- {name}: {desc.split(chr(10))[0].strip()}")
+    return "\n".join(lines)
+
+
 async def run_chat(
     ai: Any,
     tool_ctx: Any,
@@ -50,6 +61,7 @@ async def run_chat(
         target_message=target_message,
     )
 
+    framework_tools = build_tools(tool_ctx).get("tools", [])
     static_prompt = build_static_system_prompt(cfg, bot_nickname, allowed_skills=[])
     dynamic_ctx = PromptCtx(
         config=cfg,
@@ -72,11 +84,16 @@ async def run_chat(
     )
     dynamic_user_context = build_dynamic_user_context(dynamic_ctx)
 
+    available_tools_text = _build_available_tools_section(framework_tools)
+    user_context = dynamic_user_context
+    if available_tools_text:
+        user_context = f"{available_tools_text}\n\n{user_context}"
+
     pending_image_urls = getattr(tool_ctx, "pending_image_urls", []) or []
     user_parts: list[Any] = [
         TextPart(
             text=(
-                f"{dynamic_user_context}\n\n---\n\n[User message]\n"
+                f"{user_context}\n\n---\n\n[User message]\n"
                 f"{target_message.content or ''}"
             )
         )
@@ -94,7 +111,6 @@ async def run_chat(
     )
 
     caller = LLMCaller()
-    framework_tools = build_tools(tool_ctx).get("tools", [])
     available_tools = ToolCollection(framework_tools)
     tool_executor = ToolExecutor()
     tool_context = RunContext(

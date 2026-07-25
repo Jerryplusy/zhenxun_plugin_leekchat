@@ -128,6 +128,9 @@ def build_tool_context(
     pending_image_urls: list[str] | None = None,
 ) -> Any:
     from ..tools.context import ToolContext
+    from ..tools.permissions import compute_user_permission_sync
+
+    user_role = getattr(target_message, "user_role", "member")
 
     return ToolContext(
         session_id=session_id,
@@ -140,6 +143,7 @@ def build_tool_context(
         bot=getattr(event, "bot", None),
         trigger_skill_role="member",
         bot_role=bot_role,
+        user_permission=compute_user_permission_sync(user_id, user_role),
         target_message=target_message,
         pending_image_urls=pending_image_urls or [],
     )

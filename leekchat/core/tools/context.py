@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ...core.context import ChatMessage
 
+from .permissions import ToolPermission
+
 
 @dataclass
 class ToolContext:
@@ -19,6 +21,7 @@ class ToolContext:
     bot: Any | None = None
     trigger_skill_role: str = "member"
     bot_role: str = "member"
+    user_permission: ToolPermission = ToolPermission.MEMBER
     pending_image_urls: list[str] = field(default_factory=list)
     on_text_content: Any | None = None
     sent_message_indices: set[int] = field(default_factory=set)

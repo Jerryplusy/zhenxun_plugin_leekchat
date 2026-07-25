@@ -5,6 +5,8 @@ from typing import Any
 
 from zhenxun.services.log import logger
 
+from .permissions import ToolPermission, ToolScope
+
 
 def _resolve_bot(tool_ctx):
     bot = getattr(tool_ctx, "bot", None)
@@ -67,9 +69,171 @@ async def _get_member_list(tool_ctx: Any, limit: int) -> dict:
         return {"error": f"Failed to get member list: {e}"}
 
 
-def _view_media_description(args: dict, tool_ctx: Any) -> str:
+async def _get_media_by_message_id(bot: Any, message_id: int) -> dict:
+    from ..media.segment import get_forward_id, get_segment_source_candidates, get_segment_type, get_segment_url
+
+    try:
+        result = await bot.call_api("get_msg", message_id=message_id)
+    except Exception as e:
+        return {"error": f"Failed to get message: {e}"}
+    data = result if isinstance(result, dict) else {}
+    msg = data.get("message") or data.get("data", {}).get("message") or []
+    if not isinstance(msg, list):
+        return {"error": "Invalid message format"}
+    for seg in msg:
+        seg_type = get_segment_type(seg)
+        if seg_type == "image":
+            url = get_segment_url(seg)
+            if url:
+                return {"kind": "image", "url": url}
+        elif seg_type == "video":
+            sources = get_segment_source_candidates(seg)
+            if sources:
+                return {"kind": "video", "sources": sources}
+        elif seg_type == "forward":
+            fid = get_forward_id(seg)
+            if fid:
+                return {"kind": "forward", "forward_id": fid}
+    return {"error": "No image, video, or forward message found"}
+
+
+async def _describe_video(tool_ctx: Any, video_sources: list[str]) -> dict:
+    ai = getattr(tool_ctx.ai_service, "getDefault", lambda: None)()
+    if ai is None:
+        return {"success": False, "error": "AI instance not available"}
+    video_bytes = await _download_video_bytes(video_sources)
+    if not video_bytes:
+        return {"success": False, "error": "Failed to download video"}
+    model = (
+        getattr(tool_ctx.config, "multimodalWorkingModel", None)
+        or getattr(tool_ctx.config, "workingModel", None)
+    )
+    try:
+        from zhenxun.services.ai.core.messages import TextPart, VideoPart
+        from zhenxun.services.ai.core.messages.models import UserMessage
+
+        msg = UserMessage(content=[
+            TextPart(text="Describe this video's content in detail in Chinese. "
+                          "Describe visible people, objects, actions, scenes, and on-screen text."),
+            VideoPart(raw=video_bytes, mime_type="video/mp4"),
+        ])
+        resp = await ai.generate(messages=[msg], model=model)
+        return {"success": True, "description": resp.text or ""}
+    except Exception as e:
+        logger.warning(f"[describe_video] full upload failed, fallback to frames: {e}")
+        return await _describe_video_by_frames(tool_ctx, video_sources, ai, model)
+
+
+async def _download_video_bytes(sources: list[str]) -> bytes | None:
+    for source in sources:
+        try:
+            from ..media.history_media import _download_bytes
+            raw = await _download_bytes(source)
+            if raw:
+                return raw
+        except Exception:
+            continue
+    return None
+
+
+async def _describe_video_by_frames(tool_ctx: Any, sources: list[str], ai, model: str) -> dict:
+    try:
+        from ..media.history_media import VIDEO_FRAME_EXTRACTION_FALLBACK, _extract_video_frames
+        frames = await _extract_video_frames(sources[0])
+        if not frames:
+            return {"success": True, "description": VIDEO_FRAME_EXTRACTION_FALLBACK}
+        from zhenxun.services.ai.core.messages import TextPart, ImagePart
+        from zhenxun.services.ai.core.messages.models import UserMessage
+
+        content: list = [
+            TextPart(text=f"These {len(frames)} frames were sampled from a video. "
+                          "Describe the video's likely content in Chinese."),
+        ] + [ImagePart(url=url) for url in frames]
+        msg = UserMessage(content=content)
+        resp = await ai.generate(messages=[msg], model=model)
+        return {"success": True, "description": resp.text or ""}
+    except Exception as e:
+        logger.error(f"[describe_video_by_frames] failed: {e}", e=e)
+        return {"success": False, "error": str(e)}
+
+
+async def _handle_view_media(tool_ctx: Any, args: dict) -> Any:
     message_id = args.get("message_id")
-    return f"Analyze media from message_id={message_id}. Please describe what you see."
+    if not message_id:
+        return {"error": "message_id is required"}
+    bot = _resolve_bot(tool_ctx)
+    if bot is None:
+        return {"error": "Bot not available"}
+    media = await _get_media_by_message_id(bot, int(message_id))
+    if "error" in media:
+        return media
+
+    is_multimodal = bool(getattr(tool_ctx.config, "isMultimodal", False))
+
+    if media["kind"] == "image":
+        if is_multimodal:
+            from zhenxun.services.ai.core.messages import TextPart, ImagePart
+            return [
+                TextPart(
+                    text=f"The image from message #{message_id} has been attached below. "
+                         "Inspect it directly to answer the user's question."
+                ),
+                ImagePart(url=media["url"]),
+            ]
+        result = await _describe_image(
+            tool_ctx, media["url"],
+            f"Describe the image from message #{message_id} in detail in Chinese.",
+        )
+        if result.get("success"):
+            return {"success": True, "description": result["description"]}
+        return {"error": result.get("error", "Failed to analyze image")}
+
+    if media["kind"] == "video":
+        if is_multimodal:
+            return await _attach_video_to_context(tool_ctx, media["sources"], message_id)
+        result = await _describe_video(tool_ctx, media["sources"])
+        if result.get("success"):
+            return {"success": True, "description": result["description"]}
+        return {"error": result.get("error", "Failed to analyze video")}
+
+    if media["kind"] == "forward":
+        return {
+            "success": True,
+            "description": f"The message #{message_id} is a forwarded/combined message. "
+                           f"Use its forward_id={media['forward_id']} for further processing.",
+            "forward_id": media["forward_id"],
+        }
+    return {"error": "Unknown media kind"}
+
+
+async def _attach_video_to_context(tool_ctx: Any, video_sources: list[str], message_id: int) -> Any:
+    from ..media.history_media import VIDEO_FULL_UPLOAD_MAX_BYTES
+
+    video_bytes = await _download_video_bytes(video_sources)
+    if not video_bytes:
+        return {"error": "Failed to download video"}
+
+    if len(video_bytes) <= VIDEO_FULL_UPLOAD_MAX_BYTES:
+        from zhenxun.services.ai.core.messages import TextPart, VideoPart
+        return [
+            TextPart(
+                text=f"The video from message #{message_id} has been attached below. "
+                     "Inspect it directly to answer the user's question."
+            ),
+            VideoPart(raw=video_bytes, mime_type="video/mp4"),
+        ]
+
+    from ..media.history_media import VIDEO_FRAME_EXTRACTION_FALLBACK, _extract_video_frames
+    frames = await _extract_video_frames(video_sources[0])
+    if not frames:
+        return {"success": True, "description": VIDEO_FRAME_EXTRACTION_FALLBACK}
+    from zhenxun.services.ai.core.messages import TextPart, ImagePart
+    return [
+        TextPart(
+            text=f"The video from message #{message_id} is too large to attach directly. "
+                 f"Extracted {len(frames)} frames are attached below. Inspect them to answer the user."
+        ),
+    ] + [ImagePart(url=url) for url in frames]
 
 
 def _avatar_url(user_id: int) -> str:
@@ -118,6 +282,8 @@ def build_info_tools(tool_ctx: Any) -> list[dict]:
                     "required": ["user_id"],
                 },
                 "handler": lambda args: _get_member_info(tool_ctx, int(args.get("user_id", 0))),
+                "scope": ToolScope.GROUP,
+                "min_permission": ToolPermission.MEMBER,
             }
         )
 
@@ -136,8 +302,38 @@ def build_info_tools(tool_ctx: Any) -> list[dict]:
                     "required": [],
                 },
                 "handler": lambda args: _get_member_list(tool_ctx, args.get("limit") or 50),
+                "scope": ToolScope.GROUP,
+                "min_permission": ToolPermission.MEMBER,
             }
         )
+
+    tools.append(
+        {
+            "name": "view_media",
+            "description": (
+                "View and analyze an image, video, or forwarded message by its message ID. "
+                "Use this when you need to see what's in an image or video to answer "
+                "the user's question, or when you encounter media tags like [image:...], "
+                "[video:...], or [forward:...] in the chat history."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message_id": {
+                        "type": "number",
+                        "description": (
+                            "The message ID of the image, video, or forward to view. "
+                            "You can get this from the message context or chat history."
+                        ),
+                    }
+                },
+                "required": ["message_id"],
+            },
+            "handler": lambda args: _handle_view_media(tool_ctx, args),
+            "scope": ToolScope.GROUP,
+            "min_permission": ToolPermission.MEMBER,
+        }
+    )
 
     tools.append(
         {
@@ -161,6 +357,8 @@ def build_info_tools(tool_ctx: Any) -> list[dict]:
                 _avatar_url(int(args.get("user_id", 0))),
                 f"Describe user {args.get('user_id')}'s QQ avatar.",
             ),
+            "scope": ToolScope.GROUP,
+            "min_permission": ToolPermission.MEMBER,
         }
     )
 
