@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from zhenxun.services.ai.core.messages import ChatResponse, LLMMessage
-from zhenxun.services.ai.llm import generate as ai_generate
+from zhenxun.services.ai.core.messages import ChatRequest, ChatResponse, LLMMessage
 from zhenxun.services.ai.llm.builder import IntentBuilder
+from zhenxun.services.ai.llm.engine.router import LLMOrchestrator
 from zhenxun.services.log import logger
 from zhenxun.utils.pydantic_compat import model_dump
 
@@ -45,12 +45,18 @@ class LLMCaller:
             logger.info(f"[leekchat][debug][main] LLM 请求: {request_debug}")
 
         try:
-            response = await ai_generate(
+            resolved_config = config.build()
+            request = ChatRequest(
                 messages=list(messages),
-                model=model_name,
-                config=config,
+                config=resolved_config,
                 timeout=timeout,
-                extra={"tools": tools} if tools else None,
+                tools=tools,
+            )
+            response = await LLMOrchestrator.invoke(
+                request,
+                model_name=model_name,
+                task="chat",
+                override_config=resolved_config,
             )
         except Exception as e:
             logger.error(f"LLM 调用失败 model={model_name}: {e}", e=e)
@@ -59,7 +65,9 @@ class LLMCaller:
         if debug:
             logger.info(f"[leekchat][debug][main] LLM 回复: {model_dump(response)}")
 
-        if stream and on_delta and response.text:
+        # Tool-call responses can contain a short preamble. Do not stream it
+        # before the tool loop has produced the actual final answer.
+        if stream and on_delta and response.text and not response.tool_calls:
             text = strip_think_blocks(response.text)
             await on_delta(text)
 

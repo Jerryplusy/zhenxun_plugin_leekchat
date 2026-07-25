@@ -63,7 +63,7 @@ async def read_web_page(ai: Any, working_model: str, config: Any, args: dict) ->
     if len(text) > max_chars:
         text = text[:max_chars]
 
-    if getattr(config, "useWorkingModel", True) and ai is not None:
+    if getattr(config, "useWorkingModel", True):
         question = (args.get("question") or "").strip()
         focus_block = f"\nFocus: {question}" if question else ""
         prompt = (
@@ -72,11 +72,19 @@ async def read_web_page(ai: Any, working_model: str, config: Any, args: dict) ->
             f"---PAGE---\n{text}\n---END---{focus_block}"
         )
         try:
-            compressed = await ai_generate(
-                messages=[LLMMessage.user(prompt)],
-                model=working_model,
-                config=IntentBuilder().config_core(temperature=0.2, max_tokens=1200),
-            )
+            if ai is not None:
+                compressed = await ai.generate(
+                    messages=[LLMMessage.user(prompt)],
+                    model=working_model,
+                )
+            else:
+                compressed = await ai_generate(
+                    messages=[LLMMessage.user(prompt)],
+                    model=working_model,
+                    config=IntentBuilder().config_core(
+                        temperature=0.2, max_tokens=1200
+                    ),
+                )
             output = compressed.text or text
         except Exception as e:
             logger.warning(f"[web_reader] worker compression failed: {e}")

@@ -1,17 +1,31 @@
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
-from zhenxun.services.ai.core.messages import LLMMessage, TextPart
+from zhenxun.services.ai.core.messages import AssistantMessage, LLMMessage, TextPart
 from zhenxun.services.ai.core.messages.parts import ImagePart
+from zhenxun.services.ai.run.context import RunContext
+from zhenxun.services.ai.tools.engine.executor import ToolExecutor
+from zhenxun.services.ai.tools.engine.registry import ToolCollection
 from zhenxun.services.log import logger
 
 from ..context import ChatMessage, ChatResult, PromptCtx
 from ..llm_caller import LLMCaller, strip_think_blocks
 from ..media import consume_complete_stream_units
 from ..prompt import build_dynamic_user_context, build_static_system_prompt
+from ..tools.registry import build_tools
 from .stream import create_think_tag_stream_filter
 from .stream_parser import parse_line_markers
+
+_LEGACY_TOOL_RE = re.compile(
+    r"\[(web_search|web_read_page):([^\]]+)\]", re.IGNORECASE
+)
+
+
+def _strip_legacy_tool_markers(text: str) -> str:
+    return _LEGACY_TOOL_RE.sub("", text or "").strip()
 
 
 async def run_chat(
@@ -80,11 +94,22 @@ async def run_chat(
     )
 
     caller = LLMCaller()
+    framework_tools = build_tools(tool_ctx).get("tools", [])
+    available_tools = ToolCollection(framework_tools)
+    tool_executor = ToolExecutor()
+    tool_context = RunContext(
+        session_id=getattr(tool_ctx, "session_id", None),
+        deps=tool_ctx,
+    )
+    tool_records: list[dict[str, Any]] = []
     think_filter = create_think_tag_stream_filter()
     buffer = ""
 
     async def _on_delta(delta: str) -> None:
         nonlocal buffer
+        if not delta:
+            return
+        delta = _strip_legacy_tool_markers(delta)
         if not delta:
             return
         buffer += think_filter["push"](delta, False)
@@ -101,20 +126,63 @@ async def run_chat(
             if on_text:
                 await on_text(text)
 
-    try:
-        response = await caller.chat(
-            model_name=model_name,
-            messages=messages,
-            stream=bool(getattr(cfg, "stream", True)),
-            on_delta=_on_delta,
-            temperature=getattr(cfg, "temperature", 0.8),
-            debug=bool(getattr(cfg, "debug", False)),
-        )
-    except Exception as e:
-        logger.error(f"[run_chat] LLM failed: {e}", e=e)
-        return ChatResult(messages=[""])
+    response = None
+    for iteration in range(max(1, int(getattr(cfg, "maxIterations", 20)))):
+        try:
+            response = await caller.chat(
+                model_name=model_name,
+                messages=messages,
+                stream=bool(getattr(cfg, "stream", True)),
+                on_delta=_on_delta,
+                temperature=getattr(cfg, "temperature", 0.8),
+                tools=framework_tools,
+                debug=bool(getattr(cfg, "debug", False)),
+            )
+        except Exception as e:
+            logger.error(f"[run_chat] LLM failed: {e}", e=e)
+            return ChatResult(messages=[""], tool_calls=tool_records)
 
-    raw_text = strip_think_blocks(response.text or "")
+        tool_calls = list(response.tool_calls)
+
+        if not tool_calls:
+            break
+
+        # Preserve the exact assistant tool-call message so OpenAI-compatible
+        # providers can associate every following tool result with its call ID.
+        messages.append(AssistantMessage(content=list(response.content_parts)))
+        try:
+            tool_messages = await tool_executor.execute_batch(
+                tool_calls,
+                available_tools,
+                context=tool_context,
+            )
+        except Exception as e:
+            logger.error(f"[run_chat] tool execution failed: {e}", e=e)
+            return ChatResult(messages=[""], tool_calls=tool_records)
+
+        for call, tool_message in zip(tool_calls, tool_messages, strict=True):
+            tool_result = (
+                tool_message.tool_returns[0].output
+                if tool_message.tool_returns
+                else ""
+            )
+            tool_records.append(
+                {
+                    "name": call.tool_name,
+                    "arguments": _parse_tool_args(call.args),
+                    "result": tool_result,
+                }
+            )
+        messages.extend(tool_messages)
+    else:
+        logger.warning(
+            f"[run_chat] 工具调用达到上限 maxIterations={getattr(cfg, 'maxIterations', 20)}"
+        )
+
+    if response is None:
+        return ChatResult(messages=[""], tool_calls=tool_records)
+
+    raw_text = _strip_legacy_tool_markers(strip_think_blocks(response.text or ""))
 
     response_markers = parse_line_markers(raw_text)
     if response_markers.emotion_name:
@@ -149,6 +217,18 @@ async def run_chat(
 
     return ChatResult(
         messages=final_messages,
-        tool_calls=[],
+        tool_calls=tool_records,
         emoji_path=sticker.emoji_path,
     )
+
+
+def _parse_tool_args(args: dict[str, Any] | str) -> dict[str, Any]:
+    if isinstance(args, dict):
+        return args
+    try:
+        parsed = json.loads(args)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    if isinstance(parsed, dict):
+        return parsed
+    return {}

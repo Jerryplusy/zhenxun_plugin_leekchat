@@ -1,86 +1,90 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from zhenxun.services.log import logger
+
+def _segment_data(segment: Any) -> tuple[str | None, dict[str, Any]]:
+    if isinstance(segment, dict):
+        segment_type = segment.get("type")
+        data = segment.get("data") or {}
+    else:
+        segment_type = getattr(segment, "type", None)
+        data = getattr(segment, "data", None) or {}
+    return segment_type, data if isinstance(data, dict) else {}
+
+
+def get_segment_type(segment: Any) -> str | None:
+    return _segment_data(segment)[0]
 
 
 def get_segment_url(segment: Any) -> str | None:
-    """从 message segment 中提取 URL。"""
-    if not segment:
+    segment_type, data = _segment_data(segment)
+    if segment_type not in {"image", "video"}:
         return None
-    seg_type = getattr(segment, "type", None)
-    if seg_type == "image":
-        url = getattr(segment, "data", None)
-        if isinstance(url, dict):
-            return url.get("url") or url.get("file")
-        return getattr(segment, "url", None)
-    if seg_type == "video":
-        data = getattr(segment, "data", None)
-        if isinstance(data, dict):
-            return data.get("url") or data.get("file")
+    for key in ("url", "file", "path"):
+        value = data.get(key)
+        if value:
+            return str(value)
     return None
 
 
-def get_card_data(segment: Any) -> dict | None:
-    """从 xml/json/lightapp/ark 段提取 card 数据。"""
-    seg_type = getattr(segment, "type", None)
-    if seg_type not in {"xml", "json", "lightapp", "ark"}:
-        return None
-    data = getattr(segment, "data", None)
-    if isinstance(data, dict):
-        return data
-    return {"raw": str(data)} if data else None
+def get_segment_source_candidates(segment: Any) -> list[str]:
+    """提取图片/视频消息段的全部 URL 候选。"""
+    segment_type, data = _segment_data(segment)
+    if segment_type not in {"image", "video"}:
+        return []
+    return list(dict.fromkeys(
+        str(data[key]) for key in ("url", "file", "path") if data.get(key)
+    ))
 
 
-def get_forward_id(segment: Any) -> str | None:
-    """从 forward 段提取 ID。"""
-    if getattr(segment, "type", None) != "forward":
-        return None
-    data = getattr(segment, "data", None)
-    if isinstance(data, dict):
-        return data.get("id")
-    return None
+def get_forward_id(segment: Any) -> str:
+    segment_type, data = _segment_data(segment)
+    if segment_type != "forward":
+        return ""
+    value = segment.get("id") if isinstance(segment, dict) else getattr(segment, "id", None)
+    return str(value or data.get("id") or "").strip()
 
 
-def is_media_analysis_blocked(config: Any, user_id: int) -> bool:
-    blacklist = getattr(getattr(config, "mediaAnalysisBlacklistUsers", None), "__iter__", lambda: [])()
-    try:
-        return int(user_id) in set(blacklist or [])
-    except Exception:
-        return False
+def get_card_data(segment: Any) -> str:
+    segment_type, data = _segment_data(segment)
+    if segment_type not in {"json", "xml", "ark", "lightapp", "cardimage"}:
+        return ""
+    return json.dumps(data, ensure_ascii=False, sort_keys=True)
 
 
-def build_history_media_options(*_args, **_kwargs) -> dict:
-    """占位 - 构建历史媒体处理选项"""
-    return {}
-
-
-async def get_segment_source_candidates(segment: Any) -> list[str]:
-    """从消息段提取媒体候选 URL"""
-    url = get_segment_url(segment)
-    return [url] if url else []
-
-
-async def get_video_source_candidates_from_message(bot, message_id) -> list[str]:
+async def get_video_source_candidates_from_message(
+    bot: Any | None, message_id: Any
+) -> list[str]:
     if bot is None or message_id is None:
         return []
     try:
         result = await bot.call_api("get_msg", message_id=message_id)
     except Exception:
         return []
-    segments = (result or {}).get("message") or (result or {}).get("data", {}).get("message") or []
+    data = result or {}
+    segments = data.get("message") or data.get("data", {}).get("message") or []
     if not isinstance(segments, list):
         return []
     urls: list[str] = []
-    for seg in segments:
-        if not isinstance(seg, dict):
+    for segment in segments:
+        if get_segment_type(segment) != "video":
             continue
-        if seg.get("type") != "video":
-            continue
-        data = seg.get("data") or {}
-        for k in ("url", "file", "path"):
-            v = data.get(k)
-            if isinstance(v, str) and v.strip() and v.strip() not in urls:
-                urls.append(v.strip())
+        for url in get_segment_source_candidates(segment):
+            if url not in urls:
+                urls.append(url)
     return urls
+
+
+def is_media_analysis_blocked(config: Any, user_id: int) -> bool:
+    blacklist = getattr(config, "mediaAnalysisBlacklistUsers", None) or []
+    try:
+        blocked_ids = {int(value) for value in blacklist if str(value).strip()}
+        return int(user_id) in blocked_ids
+    except (TypeError, ValueError):
+        return False
+
+
+def build_history_media_options(*_args, **_kwargs) -> dict:
+    return {}

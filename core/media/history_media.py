@@ -584,6 +584,101 @@ async def summarize_history_card(
     return f"[card:{summary}]"
 
 
+def _notice_value(notice: Any, *keys: str) -> Any:
+    for key in keys:
+        if isinstance(notice, dict):
+            value = notice.get(key)
+        else:
+            value = getattr(notice, key, None)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _extract_notice_text(notice: Any) -> str:
+    nested = _notice_value(notice, "notice", "data")
+    candidates = [
+        _notice_value(notice, "message", "text", "content", "title", "msg", "raw_message"),
+        _notice_value(nested, "message", "text", "content", "title", "msg"),
+    ]
+    for value in candidates:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        if isinstance(value, list):
+            text = _extract_message_segments_text(value)
+            if text:
+                return text
+    return ""
+
+
+def _extract_notice_sender(notice: Any) -> tuple[int, str]:
+    sender = _notice_value(notice, "sender") or {}
+    user_id = _notice_value(
+        notice,
+        "user_id",
+        "sender_id",
+        "operator_id",
+        "poster_id",
+        "publisher_id",
+    )
+    if user_id is None:
+        user_id = _notice_value(sender, "user_id")
+    name = _notice_value(
+        sender,
+        "card",
+        "nickname",
+    ) or _notice_value(notice, "sender_name", "nickname", "publisher_name")
+    try:
+        normalized_id = int(user_id or 0)
+    except (TypeError, ValueError):
+        normalized_id = 0
+    return normalized_id, str(name or normalized_id or "unknown")
+
+
+def _notice_timestamp(notice: Any) -> int:
+    value = _notice_value(
+        notice, "publish_time", "time", "created_at", "create_time"
+    )
+    try:
+        timestamp = int(value or 0)
+    except (TypeError, ValueError):
+        timestamp = 0
+    return timestamp * 1000 if timestamp < 10**12 else timestamp
+
+
+async def summarize_group_notice(
+    notice: Any,
+    ai_generate: Any | None = None,
+    working_model: str | None = None,
+    rate_limit_guard: Any | None = None,
+    rate_limit_context: dict | None = None,
+) -> dict[str, Any] | None:
+    """摘要群公告，返回可写入聊天历史的用户消息载荷。"""
+    if ai_generate is None or not working_model:
+        return None
+    text = _extract_notice_text(notice)
+    if not text:
+        return None
+
+    async def _call():
+        return await _summarize_text_content("群公告", text, working_model, ai_generate)
+
+    summary = _normalize_summary(
+        await _run_with_guard(_call, rate_limit_guard, rate_limit_context)
+    )
+    if not summary:
+        return None
+    user_id, user_name = _extract_notice_sender(notice)
+    return {
+        "content": f"发布了一条群公告：[group_notice:{summary}]",
+        "user_id": user_id,
+        "user_name": user_name,
+        "user_role": "member",
+        "timestamp": _notice_timestamp(notice),
+        "message_id": int(_notice_value(notice, "message_id") or 0),
+    }
+
+
 async def get_cached_forward_tag_async(forward_id: str) -> str:
     fid = (forward_id or "").strip()
     if not fid:

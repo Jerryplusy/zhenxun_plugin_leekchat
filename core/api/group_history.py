@@ -99,6 +99,7 @@ def _to_chat_message(
     video_lookup: dict[str, str] | None = None,
     forward_lookup: dict[str, str] | None = None,
     card_lookup: dict[str, str] | None = None,
+    media_analysis_allowed: bool = True,
 ) -> ChatMessage:
     sender = raw.get("sender") or {}
     user_id = int(sender.get("user_id") or 0)
@@ -116,10 +117,10 @@ def _to_chat_message(
     content = _render_segments(
         segments,
         fallback=raw.get("raw_message", ""),
-        image_lookup=image_lookup,
-        video_lookup=video_lookup,
-        forward_lookup=forward_lookup,
-        card_lookup=card_lookup,
+        image_lookup=image_lookup if media_analysis_allowed else {},
+        video_lookup=video_lookup if media_analysis_allowed else {},
+        forward_lookup=forward_lookup if media_analysis_allowed else {},
+        card_lookup=card_lookup if media_analysis_allowed else {},
     )
     return ChatMessage(
         id=message_id,
@@ -270,6 +271,7 @@ async def fetch_group_history_messages(
     group_id: int,
     self_id: int,
     limit: int,
+    media_config: Any | None = None,
 ) -> list[ChatMessage]:
     if bot is None or not group_id:
         logger.info(f"[group_history] group={group_id} 无 bot 或无 group_id，跳过")
@@ -341,10 +343,26 @@ async def fetch_group_history_messages(
     collected.sort(key=lambda m: int(m.get("time") or 0))
     collected = collected[:target]
 
-    image_lookup = await _build_image_lookup(_collect_image_urls(collected))
-    video_lookup = await _build_video_lookup(_collect_video_urls(collected))
-    forward_lookup = await _build_forward_lookup(_collect_forward_ids(collected))
-    card_lookup = await _build_card_lookup(_collect_card_keys(collected))
+    media_analysis_enabled = (
+        True
+        if media_config is None
+        else bool(getattr(media_config, "enableMediaRecognition", True))
+    )
+    if media_analysis_enabled:
+        image_lookup = await _build_image_lookup(_collect_image_urls(collected))
+        video_lookup = await _build_video_lookup(_collect_video_urls(collected))
+        forward_lookup = await _build_forward_lookup(_collect_forward_ids(collected))
+        card_lookup = await _build_card_lookup(_collect_card_keys(collected))
+    else:
+        image_lookup = {}
+        video_lookup = {}
+        forward_lookup = {}
+        card_lookup = {}
+    blacklist = getattr(media_config, "mediaAnalysisBlacklistUsers", None) or []
+    try:
+        blocked_users = {int(value) for value in blacklist if str(value).strip()}
+    except (TypeError, ValueError):
+        blocked_users = set()
     img_urls = _collect_image_urls(collected)
     vid_urls = _collect_video_urls(collected)
     fwd_ids = _collect_forward_ids(collected)
@@ -363,6 +381,11 @@ async def fetch_group_history_messages(
             video_lookup=video_lookup,
             forward_lookup=forward_lookup,
             card_lookup=card_lookup,
+            media_analysis_allowed=(
+                media_analysis_enabled
+                and int((m.get("sender") or {}).get("user_id") or 0)
+                not in blocked_users
+            ),
         )
         for m in collected
     ]

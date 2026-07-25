@@ -31,7 +31,7 @@
 
 由于输出token通常小于100 故不计算
 
-单次请求输入预计消耗 ~5000 token，每次和机器人对话会增加 ~200 token 机器人调用工具可命中 ~1000 token 左右缓存
+单次请求输入预计消耗 ~5000 token，每次和机器人对话会增加 ~200 token 机器人连续调用工具可命中 ~4000 token 左右缓存
 
 并不是每次对话都能命中缓存，通常情况下，超过5分钟无请求的提供商会清理上次请求的缓存，故只有连续对话/工具调用有机会命中缓存
 
@@ -60,20 +60,7 @@
 
 ## 配置
 
-编辑 zhenxun 配置中的 `zhenxun_plugin_leekchat` 模块：
-
-```yaml
-zhenxun_plugin_leekchat:
-  MAIN_MODEL: "OpenAI/gpt-4o"        # 主模型
-  WORKING_MODEL: "OpenAI/gpt-4o-mini" # 工作模型
-  VISION_MODEL: "OpenAI/gpt-4o"      # 视觉工作模型
-  BASE: "{}"                          # 基础配置 JSON
-  SETTINGS: "{}"                      # 设置项 JSON
-  PERSONALIZATION: "{}"               # 人设/情感/风格 JSON
-  GROUPS: "{}"                        # 群覆盖 JSON
-```
-
-详细字段见 `configs/base.py`。
+编辑 zhenxun 配置`data/config.yaml`中的 `zhenxun_plugin_leekchat` 模块
 
 ## 表情包
 

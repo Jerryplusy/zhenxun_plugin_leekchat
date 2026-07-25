@@ -9,7 +9,6 @@ from zhenxun.services.log import logger
 
 from ...models import ChatMessage, ChatSession
 from ..api.group_history import fetch_group_history_messages
-from ..media.image_analyzer import describe_image
 from .stream_parser import parse_line_markers
 
 if TYPE_CHECKING:
@@ -22,6 +21,7 @@ async def get_group_history_messages(
     session_id: str,
     limit: int,
     self_id: int | None = None,
+    media_config: Any | None = None,
 ) -> list[ChatMessage]:
     """优先走 OneBot API；bot 不可用时回退数据库"""
     if bot is not None and group_id:
@@ -31,6 +31,7 @@ async def get_group_history_messages(
                 group_id=group_id,
                 self_id=self_id or 0,
                 limit=limit,
+                media_config=media_config,
             )
             if api_history:
                 return api_history
@@ -232,6 +233,7 @@ async def process_chat(
         session_id=session_id,
         limit=getattr(cfg, "historyCount", 100),
         self_id=self_id,
+        media_config=cfg,
     )
 
     tool_ctx = build_tool_context(
@@ -264,22 +266,8 @@ async def process_chat(
             ).accepts_input(ModelModality.IMAGE)
 
             if not main_accepts_image:
-                # 主模型不支持图片时，才使用视觉工作模型做文字化降级。
                 tool_ctx.pending_image_urls = []
-                vision_model = getattr(cfg, "multimodalWorkingModel", None) or ""
-                descriptions: list[str] = []
-                if getattr(cfg, "enableMediaRecognition", True):
-                    for image_url in media_urls:
-                        analyzed = await describe_image(None, image_url, vision_model)
-                        if analyzed.get("success") and analyzed.get("description"):
-                            descriptions.append(analyzed["description"])
-
-                if descriptions:
-                    target_message.content = (
-                        f"{content}\n\n[视觉模型识别的媒体内容]\n"
-                        + "\n".join(descriptions)
-                    ).strip()
-                elif not content.strip():
+                if not target_message.content.strip():
                     target_message.content = "[图片内容未能识别]"
 
         return await run_chat(

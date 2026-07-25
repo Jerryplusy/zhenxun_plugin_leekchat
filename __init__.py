@@ -23,6 +23,7 @@ from .core.engine import (
 )
 from .core.engine.send import send_ai_response, send_emoji, send_text_message
 from .core.media import build_history_media_options
+from .core.media.recognition import recognize_group_media_event
 from .handlers import handle_message, handle_poke
 from .humanize import HumanizeEngine
 from .managers import (
@@ -104,6 +105,7 @@ async def _init_plugin() -> None:
                 session_id=session_id,
                 limit=limit,
                 self_id=self_id,
+                media_config=config_provider(),
             )
 
         async def get_messages_by_user(self, user_id, session_id=None, limit=20):
@@ -230,6 +232,7 @@ async def _(bot: Bot, event: NoticeEvent) -> None:
     if _plugin_context is None:
         return
     await handle_poke(_plugin_context, event, bot)
+    await recognize_group_media_event(_plugin_context, event, bot)
 
 
 def get_chat_runtime() -> ChatRuntime | None:
