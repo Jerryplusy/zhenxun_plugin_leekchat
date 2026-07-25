@@ -7,7 +7,7 @@ from zhenxun.services.ai.core.messages.parts import ImagePart
 from zhenxun.services.log import logger
 
 from ..context import ChatMessage, ChatResult, PromptCtx
-from ..llm_caller import LLMCaller
+from ..llm_caller import LLMCaller, strip_think_blocks
 from ..media import consume_complete_stream_units
 from ..prompt import build_dynamic_user_context, build_static_system_prompt
 from .stream import create_think_tag_stream_filter
@@ -114,7 +114,7 @@ async def run_chat(
         logger.error(f"[run_chat] LLM failed: {e}", e=e)
         return ChatResult(messages=[""])
 
-    raw_text = response.text or ""
+    raw_text = strip_think_blocks(response.text or "")
 
     response_markers = parse_line_markers(raw_text)
     if response_markers.emotion_name:

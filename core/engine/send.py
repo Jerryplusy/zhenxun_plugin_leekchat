@@ -41,7 +41,7 @@ async def _build_ai_message(
 
     markdown = extract_standalone_markdown_block(parsed.clean_text)
     if markdown is not None:
-        rendered = await render_markdown_to_image(markdown)
+        rendered = await render_markdown_to_image(markdown, theme="auto")
         if rendered is not None:
             segments.append(Image(raw=rendered))
         elif markdown:

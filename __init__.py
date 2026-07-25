@@ -85,7 +85,26 @@ async def _init_plugin() -> None:
 
     class _DBProxy:
         async def get_messages(self, session_id, limit):
-            return await get_group_history_messages(0, session_id, limit)
+            from nonebot import get_bot
+
+            bot = None
+            self_id = 0
+            try:
+                bot = get_bot()
+                self_id = int(bot.self_id) if bot else 0
+            except Exception:
+                pass
+            try:
+                gid = int(session_id.split(":", 1)[-1]) if session_id.startswith("group:") else 0
+            except Exception:
+                gid = 0
+            return await get_group_history_messages(
+                bot=bot,
+                group_id=gid,
+                session_id=session_id,
+                limit=limit,
+                self_id=self_id,
+            )
 
         async def get_messages_by_user(self, user_id, session_id=None, limit=20):
             from .models import ChatMessage as M

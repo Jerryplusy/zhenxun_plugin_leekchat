@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ..core.context import ChatPluginContext
 
 
-POKE_COOLDOWN_MS = 10 * 60_000
+POKE_COOLDOWN_MS = 60_000
 _poke_cooldowns: dict[int, int] = {}
 
 

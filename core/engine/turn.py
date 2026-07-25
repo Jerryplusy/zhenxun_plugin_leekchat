@@ -8,6 +8,7 @@ from zhenxun.services.ai.llm.system.capabilities import get_model_capabilities
 from zhenxun.services.log import logger
 
 from ...models import ChatMessage, ChatSession
+from ..api.group_history import fetch_group_history_messages
 from ..media.image_analyzer import describe_image
 from .stream_parser import parse_line_markers
 
@@ -16,10 +17,28 @@ if TYPE_CHECKING:
 
 
 async def get_group_history_messages(
+    bot: Any | None,
     group_id: int,
     session_id: str,
     limit: int,
+    self_id: int | None = None,
 ) -> list[ChatMessage]:
+    """优先走 OneBot API；bot 不可用时回退数据库"""
+    if bot is not None and group_id:
+        try:
+            api_history = await fetch_group_history_messages(
+                bot=bot,
+                group_id=group_id,
+                self_id=self_id or 0,
+                limit=limit,
+            )
+            if api_history:
+                return api_history
+        except Exception as e:
+            logger.warning(
+                f"[get_group_history_messages] API fallback to DB: {e}"
+            )
+
     rows = (
         await ChatMessage.filter(session_id=session_id)
         .order_by("-timestamp")
@@ -208,9 +227,11 @@ async def process_chat(
 
     cfg = await plugin_ctx.get_config(group_id)
     history = await get_group_history_messages(
+        bot=bot,
         group_id=group_id or 0,
         session_id=session_id,
         limit=getattr(cfg, "historyCount", 100),
+        self_id=self_id,
     )
 
     tool_ctx = build_tool_context(

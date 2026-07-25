@@ -62,5 +62,25 @@ async def get_segment_source_candidates(segment: Any) -> list[str]:
     return [url] if url else []
 
 
-async def get_video_source_candidates_from_message(_bot, _message_id) -> list[str]:
-    return []
+async def get_video_source_candidates_from_message(bot, message_id) -> list[str]:
+    if bot is None or message_id is None:
+        return []
+    try:
+        result = await bot.call_api("get_msg", message_id=message_id)
+    except Exception:
+        return []
+    segments = (result or {}).get("message") or (result or {}).get("data", {}).get("message") or []
+    if not isinstance(segments, list):
+        return []
+    urls: list[str] = []
+    for seg in segments:
+        if not isinstance(seg, dict):
+            continue
+        if seg.get("type") != "video":
+            continue
+        data = seg.get("data") or {}
+        for k in ("url", "file", "path"):
+            v = data.get(k)
+            if isinstance(v, str) and v.strip() and v.strip() not in urls:
+                urls.append(v.strip())
+    return urls

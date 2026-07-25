@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from zhenxun.services.log import logger
 
 from ..core.engine import process_chat
+from ..core.media.image_analyzer import get_or_recognize_image
 from ..models import ChatMessage
 from ..utils import (
     extract_image_urls,
@@ -29,9 +30,6 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
     if user_id == self_id:
         return
 
-    if not is_message_triggered(event):
-        return
-
     is_group = getattr(event, "message_type", "") == "group"
     group_id = getattr(event, "group_id", None) if is_group else None
 
@@ -41,6 +39,35 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
         return
 
     cfg = await plugin_ctx.get_config(group_id)
+    vision_model = getattr(cfg, "multimodalWorkingModel", None) or ""
+    enable_recognition = getattr(cfg, "enableMediaRecognition", True)
+
+    if image_urls:
+        if enable_recognition:
+            logger.info(
+                f"[leekchat] 收到 {len(image_urls)} 张图片，cfg.multimodalWorkingModel={vision_model!r}"
+            )
+            for url in image_urls:
+                try:
+                    await get_or_recognize_image(
+                        url,
+                        vision_model,
+                        bot=bot,
+                        rate_limit_guard=getattr(plugin_ctx, "run_with_rate_limit_guard", None),
+                        rate_limit_context={"userId": user_id, "groupId": group_id},
+                    )
+                except Exception as e:
+                    logger.warning(f"[leekchat] 图片识别失败 url={url[:80]}: {e}")
+        else:
+            logger.info(
+                f"[leekchat] 收到 {len(image_urls)} 张图片，跳过识别"
+            )
+
+    if not is_message_triggered(event):
+        logger.debug(
+            f"[leekchat] 跳过 AI 回复（未触发 to_me） group={group_id} user={user_id}"
+        )
+        return
     if group_id is not None and not is_group_allowed(group_id, cfg):
         return
 
