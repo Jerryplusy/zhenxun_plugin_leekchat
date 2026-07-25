@@ -96,9 +96,12 @@ async def _init_plugin() -> None:
             except Exception:
                 pass
             try:
-                gid = int(session_id.split(":", 1)[-1]) if session_id.startswith("group:") else 0
+                prefix, raw_id = session_id.split(":", 1)
+                gid = int(raw_id) if prefix == "group" else None
+                uid = int(raw_id) if prefix == "personal" else None
             except Exception:
-                gid = 0
+                gid = None
+                uid = None
             return await get_group_history_messages(
                 bot=bot,
                 group_id=gid,
@@ -106,6 +109,7 @@ async def _init_plugin() -> None:
                 limit=limit,
                 self_id=self_id,
                 media_config=config_provider(),
+                user_id=uid,
             )
 
         async def get_messages_by_user(self, user_id, session_id=None, limit=20):

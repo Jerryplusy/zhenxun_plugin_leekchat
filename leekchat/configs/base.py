@@ -122,6 +122,7 @@ class LeekchatConfig(BaseModel):
     historyCount: int = 100
     maxIterations: int = 20
     enableMediaRecognition: bool = True
+    enablePrivateChat: bool = True
 
     searxng: SearxngConfig = Field(default_factory=SearxngConfig)
     webReader: WebReaderConfig = Field(default_factory=WebReaderConfig)
@@ -174,6 +175,7 @@ BASE_CONFIG: dict = {
 
 
 SETTINGS_CONFIG: dict = {
+    "enablePrivateChat": True,
     "searxng": SearxngConfig().model_dump(),
     "webReader": WebReaderConfig().model_dump(),
     "audio": AudioConfig().model_dump(),

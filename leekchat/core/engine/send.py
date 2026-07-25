@@ -142,10 +142,11 @@ async def send_text_message(
 
 async def send_ai_response(
     bot: Any,
-    group_id: int,
+    group_id: int | None,
     messages: list[str],
     sent_indices: set[int] | None = None,
     default_reply_id: int | None = None,
+    user_id: int | None = None,
 ) -> None:
     for i, msg_text in enumerate(messages):
         if sent_indices and i in sent_indices:
@@ -158,19 +159,23 @@ async def send_ai_response(
 
         parsed = parse_line_markers(msg_text)
         if parsed.poke_users:
-            for user_id in parsed.poke_users:
+            for poke_uid in parsed.poke_users:
                 try:
                     await bot.call_api(
                         "send_poke",
-                        group_id=int(group_id),
-                        user_id=int(user_id),
+                        group_id=int(group_id) if group_id else None,
+                        user_id=int(poke_uid),
                     )
                 except Exception as e:
                     logger.warning(f"[send_ai_response] poke failed: {e}", e=e)
 
         from nonebot_plugin_alconna import Target
 
-        target = Target.group(str(group_id))
+        target = (
+            Target.group(str(group_id))
+            if group_id is not None
+            else Target.user(str(user_id))
+        )
         msg = await _build_ai_message(msg_text, default_reply_id)
         if msg is None:
             continue
@@ -180,11 +185,11 @@ async def send_ai_response(
             logger.error(f"[send_ai_response] send failed: {e}", e=e)
 
 
-async def send_emoji(bot: Any, group_id: int, emoji_path: str | None) -> None:
+async def send_emoji(bot: Any, group_id: int | None, emoji_path: str | None, user_id: int | None = None) -> None:
     if not emoji_path:
         return
     path = Path(emoji_path)
     if not path.is_file():
         logger.warning(f"[send_emoji] file not found: {emoji_path}")
         return
-    await _send_image_with_fallback(bot, None, group_id, path)
+    await _send_image_with_fallback(bot, user_id, group_id, path)

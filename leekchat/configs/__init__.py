@@ -33,6 +33,7 @@ _HELP_MAP: dict[str, str] = {
     "historyCount": "保留的历史消息条数",
     "maxIterations": "单次回复最大工具调用轮次",
     "enableMediaRecognition": "是否启用媒体识别",
+    "enablePrivateChat": "是否响应私聊消息",
     # SETTINGS 顶层
     "blacklistGroups": "黑名单群组 ID（逗号分隔）",
     "whitelistGroups": "白名单群组 ID（逗号分隔，留空不限制）",

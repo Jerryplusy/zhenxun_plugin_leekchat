@@ -17,11 +17,12 @@ if TYPE_CHECKING:
 
 async def get_group_history_messages(
     bot: Any | None,
-    group_id: int,
+    group_id: int | None,
     session_id: str,
     limit: int,
     self_id: int | None = None,
     media_config: Any | None = None,
+    user_id: int | None = None,
 ) -> list[ChatMessage]:
     """优先走 OneBot API；bot 不可用时回退数据库"""
     if bot is not None and group_id:
@@ -38,6 +39,23 @@ async def get_group_history_messages(
         except Exception as e:
             logger.warning(
                 f"[get_group_history_messages] API fallback to DB: {e}"
+            )
+
+    if bot is not None and not group_id and user_id:
+        try:
+            from ..api.friend_history import fetch_friend_history_messages
+
+            api_history = await fetch_friend_history_messages(
+                bot=bot,
+                user_id=user_id,
+                self_id=self_id or 0,
+                limit=limit,
+            )
+            if api_history:
+                return api_history
+        except Exception as e:
+            logger.warning(
+                f"[get_group_history_messages] friend API fallback to DB: {e}"
             )
 
     rows = (
@@ -162,19 +180,20 @@ async def finalize_chat_turn(
         return
 
     messages = getattr(result, "messages", []) or []
-    if messages and group_id is not None:
+    if messages:
         await send_ai_response(
             bot,
             group_id,
             messages,
             default_reply_id=getattr(tool_ctx.target_message, "message_id", None),
+            user_id=user_id,
         )
 
     emoji_path = getattr(result, "emoji_path", None)
-    if emoji_path and group_id is not None:
-        await send_emoji(bot, group_id, emoji_path)
+    if emoji_path:
+        await send_emoji(bot, group_id, emoji_path, user_id=user_id)
 
-    if messages and group_id is not None:
+    if messages:
         for msg in messages:
             try:
                 await ChatMessage.create(
@@ -229,11 +248,12 @@ async def process_chat(
     cfg = await plugin_ctx.get_config(group_id)
     history = await get_group_history_messages(
         bot=bot,
-        group_id=group_id or 0,
+        group_id=group_id,
         session_id=session_id,
         limit=getattr(cfg, "historyCount", 100),
         self_id=self_id,
         media_config=cfg,
+        user_id=user_id,
     )
 
     tool_ctx = build_tool_context(

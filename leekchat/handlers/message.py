@@ -37,6 +37,13 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
     is_group = getattr(event, "message_type", "") == "group"
     group_id = getattr(event, "group_id", None) if is_group else None
 
+    cfg = await plugin_ctx.get_config(group_id)
+    if not is_group and not getattr(cfg, "enablePrivateChat", True):
+        logger.debug(
+            f"[leekchat] 私聊已关闭，跳过 user={getattr(event, 'user_id', None)}"
+        )
+        return
+
     text = extract_message_text(event)
     is_group_announcement = is_group_announcement_event(event)
     media_present = has_media_segments(event)
@@ -44,7 +51,6 @@ async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) 
     if not text.strip() and not media_present and not is_group_announcement:
         return
 
-    cfg = await plugin_ctx.get_config(group_id)
     if group_id is not None and not is_group_allowed(group_id, cfg):
         return
 
