@@ -27,7 +27,6 @@ _NEWLINE_LIST_LEAVES = {"examples", "multipleStyles"}
 
 
 def _make_config(key: str, value: Any) -> RegisterConfig:
-    """从扁平 (key, value) 生成 RegisterConfig。help 用中文描述"""
     leaf = key.rsplit("_", 1)[-1]
     help_text = help_for(key)
     if isinstance(value, list):
@@ -86,10 +85,10 @@ _all_configs: list[RegisterConfig] = [
 
 __plugin_meta__ = PluginMetadata(
     name="leekchat",
-    description="基于 zhenxun AI 服务的多模型 AI 聊天插件",
-    usage=("@bot、使用昵称触发或引用都可以哦").strip(),
+    description="小真寻的实用聊天插件OvO",
+    usage="@bot、使用昵称触发或引用都可以哦",
     extra=PluginExtraData(
-        author="leekchat team",
+        author="Jerryplusy",
         version="1.0.0",
         menu_type="聊天功能",
         configs=_all_configs,

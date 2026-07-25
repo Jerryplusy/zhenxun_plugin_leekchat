@@ -16,13 +16,13 @@ async def _build_ai_message(
     """将 AI 动作标记转换为真正的通用消息段。"""
     from nonebot_plugin_alconna import At, Image, Reply, Text
 
-    from zhenxun.plugins.zhenxun_plugin_leekchat.core.engine.stream_parser import (
+    from .stream_parser import (
         parse_line_markers,
     )
-    from zhenxun.plugins.zhenxun_plugin_leekchat.core.media.markdown_message import (
+    from ..media.markdown_message import (
         extract_standalone_markdown_block,
     )
-    from zhenxun.plugins.zhenxun_plugin_leekchat.core.media.markdown_screenshot import (
+    from ..media.markdown_screenshot import (
         render_markdown_to_image,
     )
     from zhenxun.utils.message import MessageUtils
@@ -152,7 +152,7 @@ async def send_ai_response(
             continue
         if not msg_text or not msg_text.strip():
             continue
-        from zhenxun.plugins.zhenxun_plugin_leekchat.core.engine.stream_parser import (
+        from .stream_parser import (
             parse_line_markers,
         )
 
