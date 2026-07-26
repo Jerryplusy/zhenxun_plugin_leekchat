@@ -155,11 +155,15 @@ class SkillRegistry:
         self,
         user_permission: ToolPermission = ToolPermission.MEMBER,
         allowed_names: set[str] | None = None,
+        hidden_names: set[str] | None = None,
     ) -> list[dict]:
-        """技能目录（供 system prompt 展示），按权限与白名单过滤。"""
         result: list[dict] = []
         for entry in self._entries.values():
             if user_permission < entry.min_permission:
+                continue
+            if hidden_names and (
+                entry.module in hidden_names or entry.name in hidden_names
+            ):
                 continue
             if allowed_names and not (
                 entry.module in allowed_names or entry.name in allowed_names

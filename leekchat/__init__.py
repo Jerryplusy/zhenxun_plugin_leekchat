@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from nonebot import on_command, on_message, on_notice
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent, NoticeEvent
-from nonebot.permission import SUPERUSER
 
 from zhenxun.services.log import logger
 from zhenxun.utils.manager.priority_manager import PriorityLifecycle
@@ -30,6 +29,7 @@ from .core.skills import (
     uninstall_api_hooks,
 )
 from .handlers import handle_message, handle_poke
+from .handlers.skills_cmd import _skills_handler as _skills_cmd_handler  # noqa: F401  ensure registered
 from .humanize import HumanizeEngine
 from .managers import (
     ChatDatabaseCleanup,
@@ -242,15 +242,6 @@ async def _shutdown_plugin() -> None:
 
 _message_handler = on_message(priority=99, block=False)
 _poke_handler = on_notice(priority=10)
-_reload_skills_handler = on_command(
-    "重载技能", permission=SUPERUSER, priority=5, block=True
-)
-
-
-@_reload_skills_handler.handle()
-async def _() -> None:
-    count = await get_skill_registry().scan()
-    await _reload_skills_handler.finish(f"技能目录已重载，共 {count} 个技能")
 
 
 @_message_handler.handle()

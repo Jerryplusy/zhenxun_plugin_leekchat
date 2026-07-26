@@ -42,6 +42,8 @@
 
 单次请求输入预计消耗 ~5000 token，每次和机器人对话会增加 ~200 token 机器人连续调用工具可命中 ~4000 token 左右缓存
 
+> 在开启外部技能时，单次请求预计消耗 ~6000 token
+
 并不是每次对话都能命中缓存，通常情况下，超过5分钟无请求的提供商会清理上次请求的缓存，故只有连续对话/工具调用有机会命中缓存
 
 | 层级     | 部分                 | Tokens | 说明               |
@@ -57,6 +59,23 @@
 |        | Reply Style        | ~320   | 回复风格             |
 |        | 动态上下文合计            | ~3830  | 无法命中缓存 实打实消耗     |
 
+## 超级用户命令
+
+- 超级用户发送 `/skills` 查看可用技能，默认全部关闭
+
+```text
+        "/skills - 显示帮助\n"
+        "/skills list - 列出所有技能\n"
+        "/skills on <名称|序号> [...] - 启用技能；支持完整名称或"
+        "技能列表中的序号，可用空格分隔多个技能\n"
+        "/skills off <名称|序号> [...] - 关闭某个技能\n"
+        "/skills allon - 启用当前扫描到的全部技能\n"
+        "/skills alloff - 不允许任何技能\n"
+        "/skills reload - 重新扫描插件并重建技能目录\n"
+        "/skills hidden - 查看默认隐藏且禁用的不常用技能\n"
+        "/skills hidden add/remove <模块名> [...] - 管理隐藏列表\n"
+        "/skills hidden reset - 恢复默认隐藏列表\n\n"
+```
 
 ## TODO 
 
@@ -64,8 +83,6 @@
 - **Topic**：话题跟踪功能未实现（`humanize/topic.py`）
 - **Expression**：表达习惯学习功能未实现（`humanize/expression.py`）
 - **Audio**：语音消息合成未实现（`core/media/audio.py`）
-- **插件调用**：插件调用机制未实现（`core/external_skills.py`）
-- **各种细节优化**：插件来自 mioku，使用MiniMax-M3迁移，可能存在细节问题，有问题请提出issue。
 
 ## 配置
 

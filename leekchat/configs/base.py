@@ -131,8 +131,9 @@ class LeekchatConfig(BaseModel):
     whitelistGroups: list[int] = Field(default_factory=list)
     mediaAnalysisBlacklistUsers: list[int] = Field(default_factory=list)
     maxSessions: int = 100
-    enableExternalSkills: bool = True
+    enableExternalSkills: bool = False
     allowedExternalSkills: list[str] = Field(default_factory=list)
+    hiddenExternalSkills: list[str] = Field(default_factory=list)
     skillExecuteTimeout: int = 30
     skillUsageMaxChars: int = 2000
     skillMaxLoadedPerSession: int = 5
@@ -186,8 +187,9 @@ SETTINGS_CONFIG: dict = {
     "whitelistGroups": [],
     "mediaAnalysisBlacklistUsers": [],
     "maxSessions": 100,
-    "enableExternalSkills": True,
+    "enableExternalSkills": False,
     "allowedExternalSkills": [],
+    "hiddenExternalSkills": [],
     "skillExecuteTimeout": 30,
     "skillUsageMaxChars": 2000,
     "skillMaxLoadedPerSession": 5,

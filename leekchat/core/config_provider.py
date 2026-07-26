@@ -17,6 +17,7 @@ _LIST_FIELDS: set[str] = {
     "SETTINGS_whitelistGroups",
     "SETTINGS_mediaAnalysisBlacklistUsers",
     "SETTINGS_allowedExternalSkills",
+    "SETTINGS_hiddenExternalSkills",
     "SETTINGS_nicknames",
     "SETTINGS_webReader_allowedContentTypes",
     "PERSONALIZATION_planner_idleCheckBotIds",
