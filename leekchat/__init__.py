@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nonebot import on_message, on_notice
+from nonebot import on_command, on_message, on_notice
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent, NoticeEvent
 from nonebot.permission import SUPERUSER
 
@@ -24,6 +24,11 @@ from .core.engine import (
 from .core.engine.send import send_ai_response, send_emoji, send_text_message
 from .core.media import build_history_media_options
 from .core.media.recognition import recognize_group_media_event
+from .core.skills import (
+    get_skill_registry,
+    install_api_hooks,
+    uninstall_api_hooks,
+)
 from .handlers import handle_message, handle_poke
 from .humanize import HumanizeEngine
 from .managers import (
@@ -82,7 +87,9 @@ async def _init_plugin() -> None:
     queue_manager = MessageQueueManager()
     rate_limiter = RateLimiter()
     rate_limiter.set_config_provider(config_provider)
-    skill_manager = SkillSessionManager()
+    skill_manager = SkillSessionManager(
+        max_loaded_per_session=getattr(config_provider(), "skillMaxLoadedPerSession", 5)
+    )
 
     class _DBProxy:
         async def get_messages(self, session_id, limit):
@@ -202,11 +209,24 @@ async def _init_plugin() -> None:
     )
 
 
+@PriorityLifecycle.on_startup(priority=25)
+async def _init_skills() -> None:
+    """晚于 init_plugin(4) 与自身 _init_plugin(20)，此时 PluginInfo 表已就绪"""
+    if _plugin_context is None:
+        return
+    if not getattr(_plugin_context.config_provider(), "enableExternalSkills", False):
+        logger.info("[leekchat] 外部技能未启用，跳过技能扫描")
+        return
+    install_api_hooks()
+    await get_skill_registry().scan()
+
+
 @PriorityLifecycle.on_shutdown(priority=20)
 async def _shutdown_plugin() -> None:
     global _plugin_context, _chat_runtime
     if _plugin_context is None:
         return
+    uninstall_api_hooks()
     ctx = _plugin_context
     ctx.cooldown_manager.dispose()
     ctx.idle_check_manager.dispose()
@@ -222,6 +242,15 @@ async def _shutdown_plugin() -> None:
 
 _message_handler = on_message(priority=99, block=False)
 _poke_handler = on_notice(priority=10)
+_reload_skills_handler = on_command(
+    "重载技能", permission=SUPERUSER, priority=5, block=True
+)
+
+
+@_reload_skills_handler.handle()
+async def _() -> None:
+    count = await get_skill_registry().scan()
+    await _reload_skills_handler.finish(f"技能目录已重载，共 {count} 个技能")
 
 
 @_message_handler.handle()

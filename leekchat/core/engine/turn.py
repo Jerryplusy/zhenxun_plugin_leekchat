@@ -129,6 +129,7 @@ def build_tool_context(
     target_message,
     humanize,
     pending_image_urls: list[str] | None = None,
+    bot=None,
 ) -> ToolContext:
     from ..tools.context import ToolContext
     from ..tools.permissions import compute_user_permission_sync
@@ -143,7 +144,7 @@ def build_tool_context(
         ai_service=ai_service,
         db=db,
         event=event,
-        bot=getattr(event, "bot", None),
+        bot=bot if bot is not None else getattr(event, "bot", None),
         trigger_skill_role="member",
         bot_role=bot_role,
         user_permission=compute_user_permission_sync(user_id, user_role),
@@ -277,6 +278,7 @@ async def process_chat(
         target_message,
         plugin_ctx.humanize,
         pending_image_urls=media_urls or [],
+        bot=bot,
     )
 
     contexts = await get_humanize_contexts(

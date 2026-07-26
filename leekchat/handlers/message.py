@@ -31,6 +31,9 @@ async def handle_message(
     event: MessageEvent,
     bot: Bot,
 ) -> None:
+    if getattr(event, "_ai_triggered", False):
+        return
+
     self_id = getattr(event, "self_id", None)
     if bot is None or not self_id:
         return

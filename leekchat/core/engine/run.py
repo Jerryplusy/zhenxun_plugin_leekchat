@@ -12,10 +12,12 @@ from zhenxun.services.ai.tools.engine.registry import ToolCollection
 from zhenxun.services.log import logger
 
 from ..context import ChatMessage, ChatResult, PromptCtx
+from ..external_skills import filter_allowed_external_skills
 from ..llm_caller import LLMCaller, strip_think_blocks
 from ..media import consume_complete_stream_units
 from ..prompt import build_dynamic_user_context, build_static_system_prompt
-from ..tools.registry import build_tools
+from ..skills.registry import get_skill_registry
+from ..tools.registry import build_framework_tools_from_raw, build_tools
 from .stream import create_think_tag_stream_filter
 from .stream_parser import parse_line_markers
 
@@ -65,8 +67,13 @@ async def run_chat(
         target_message=target_message,
     )
 
-    framework_tools = build_tools(tool_ctx).get("tools", [])
-    static_prompt = build_static_system_prompt(cfg, bot_nickname, allowed_skills=[])
+    framework_tools = build_tools(tool_ctx, skill_manager=skill_manager).get("tools", [])
+    allowed_skills = filter_allowed_external_skills(
+        cfg, get_skill_registry(), tool_ctx.user_permission
+    )
+    static_prompt = build_static_system_prompt(
+        cfg, bot_nickname, allowed_skills=allowed_skills
+    )
     dynamic_ctx = PromptCtx(
         config=cfg,
         bot_nickname=bot_nickname,
@@ -84,11 +91,21 @@ async def run_chat(
         reply_context=getattr(prompt_ctx, "reply_context", None),
         review_messages=getattr(prompt_ctx, "review_messages", None),
         prompt_injections=getattr(prompt_ctx, "prompt_injections", None),
-        active_skills_info=getattr(prompt_ctx, "active_skills_info", None),
+        active_skills_info=skill_manager.get_active_skills_info(tool_ctx.session_id)
+        if skill_manager is not None
+        else None,
     )
     dynamic_user_context = build_dynamic_user_context(dynamic_ctx)
 
-    available_tools_text = _build_available_tools_section(framework_tools)
+    def _merged_tools() -> list:
+        if skill_manager is None:
+            return framework_tools
+        skill_raw = skill_manager.get_raw_tools(tool_ctx.session_id)
+        if not skill_raw:
+            return framework_tools
+        return framework_tools + build_framework_tools_from_raw(skill_raw, tool_ctx)
+
+    available_tools_text = _build_available_tools_section(_merged_tools())
     user_context = dynamic_user_context
     if available_tools_text:
         user_context = f"{available_tools_text}\n\n{user_context}"
@@ -115,7 +132,6 @@ async def run_chat(
     )
 
     caller = LLMCaller()
-    available_tools = ToolCollection(framework_tools)
     tool_executor = ToolExecutor()
     tool_context = RunContext(
         session_id=getattr(tool_ctx, "session_id", None),
@@ -148,6 +164,8 @@ async def run_chat(
 
     response = None
     for iteration in range(max(1, int(getattr(cfg, "maxIterations", 20)))):
+        iteration_tools = _merged_tools()
+        available_tools = ToolCollection(iteration_tools)
         try:
             response = await caller.chat(
                 model_name=model_name,
@@ -155,7 +173,7 @@ async def run_chat(
                 stream=bool(getattr(cfg, "stream", True)),
                 on_delta=_on_delta,
                 temperature=getattr(cfg, "temperature", 0.8),
-                tools=framework_tools,
+                tools=iteration_tools,
                 debug=bool(getattr(cfg, "debug", False)),
             )
         except Exception as e:

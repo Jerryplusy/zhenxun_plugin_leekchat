@@ -133,6 +133,9 @@ class LeekchatConfig(BaseModel):
     maxSessions: int = 100
     enableExternalSkills: bool = True
     allowedExternalSkills: list[str] = Field(default_factory=list)
+    skillExecuteTimeout: int = 30
+    skillUsageMaxChars: int = 2000
+    skillMaxLoadedPerSession: int = 5
     stream: bool = True
     enableTypingDelay: bool = True
     typingDelayMaxTotalMs: int = 10_000
@@ -185,6 +188,9 @@ SETTINGS_CONFIG: dict = {
     "maxSessions": 100,
     "enableExternalSkills": True,
     "allowedExternalSkills": [],
+    "skillExecuteTimeout": 30,
+    "skillUsageMaxChars": 2000,
+    "skillMaxLoadedPerSession": 5,
     "stream": True,
     "enableTypingDelay": True,
     "typingDelayMaxTotalMs": 10_000,

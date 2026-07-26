@@ -95,6 +95,7 @@ __plugin_meta__ = PluginMetadata(
         limits=[PluginCdBlock(cd=5, result="每5秒才能发一条哦~")],
         commands=[
             Command(command="重置会话", description="重置当前会话的 AI 消息"),
+            Command(command="重载技能", description="重新扫描插件生成 AI 技能目录（超管）"),
         ],
         setting=PluginSetting(level=5),
     ).to_dict(),

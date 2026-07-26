@@ -35,9 +35,9 @@ def _append_external_skills_section(lines: list[str], config, allowed_skills) ->
 
     builtin_descs: list[str] = []
     if getattr(getattr(config, "searxng", None), "enabled", False):
-        builtin_descs.append("- web_search: 进行网页搜索")
+        builtin_descs.append("- web_search: search the web")
     if getattr(getattr(config, "webReader", None), "enabled", False):
-        builtin_descs.append("- web_read_page: 读取某个网页URL的内容")
+        builtin_descs.append("- web_read_page: fetch a web page")
 
     plugin_list = (
         "\n".join(f"- {s['name']}: {s['description']}" for s in allowed_skills)
@@ -49,8 +49,7 @@ def _append_external_skills_section(lines: list[str], config, allowed_skills) ->
     if combined:
         lines.append(f"""
 ### External Skills
-You can load external skills to gain additional capabilities. Use load_skill to load the allowed skills below.
-You prefer to use extra skills to complete the user's tasks like an assistant
+Use the `load_skill` tool to load a skill (valid 1h). Read each tool's description for usage and parameters before calling it.
 Allowed skills:
 {combined}""")
 

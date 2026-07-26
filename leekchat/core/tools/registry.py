@@ -64,7 +64,15 @@ def _filter_tools(
     return filtered
 
 
-def build_tools(tool_ctx: "ToolContext") -> dict:
+def build_framework_tools_from_raw(
+    raw_tools: list[dict], tool_ctx: "ToolContext"
+) -> list[FunctionTool]:
+    """raw tool dict → FunctionTool"""
+    filtered = _filter_tools(raw_tools, tool_ctx)
+    return [_to_framework_tool(t, tool_ctx) for t in filtered]
+
+
+def build_tools(tool_ctx: "ToolContext", skill_manager=None) -> dict:
     chat_tools = build_info_tools(tool_ctx)
 
     config = getattr(tool_ctx, "config", None)
@@ -76,6 +84,15 @@ def build_tools(tool_ctx: "ToolContext") -> dict:
         if web_reader_enabled:
             chat_tools.append(build_web_read_page_tool(tool_ctx))
 
+        if skill_manager is not None and getattr(config, "enableExternalSkills", False):
+            from ..skills.registry import get_skill_registry
+            from .load_skill import build_load_skill_tool
+
+            registry = get_skill_registry()
+            if registry.scanned and registry.catalog(tool_ctx.user_permission):
+                chat_tools.append(
+                    build_load_skill_tool(tool_ctx, registry, skill_manager)
+                )
 
     filtered = _filter_tools(chat_tools, tool_ctx)
     return {"tools": [_to_framework_tool(t, tool_ctx) for t in filtered]}
