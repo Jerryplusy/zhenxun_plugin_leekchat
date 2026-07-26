@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.ai.core.messages import LLMMessage, TextPart
 from zhenxun.services.ai.llm import generate as ai_generate
 from zhenxun.services.ai.llm.builder import IntentBuilder
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
+
+if TYPE_CHECKING:
+    from ...configs import WebReaderConfig
+    from ..types import AIInstance
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -23,7 +27,7 @@ def _strip_html(html: str) -> str:
     return text.strip()
 
 
-async def _fetch_html(url: str, config: Any) -> tuple[str | None, str | None]:
+async def _fetch_html(url: str, config: "WebReaderConfig") -> tuple[str | None, str | None]:
     timeout_s = getattr(config, "timeoutMs", 10000) / 1000
     max_bytes = getattr(config, "maxHtmlBytes", 1_500_000)
     headers = {"User-Agent": "Mozilla/5.0 (compatible; leekchat/1.0)"}
@@ -47,7 +51,12 @@ async def _fetch_html(url: str, config: Any) -> tuple[str | None, str | None]:
         return None, f"fetch failed: {e}"
 
 
-async def read_web_page(ai: Any, working_model: str, config: Any, args: dict) -> dict:
+async def read_web_page(
+    ai: "AIInstance | None",
+    working_model: str,
+    config: "WebReaderConfig",
+    args: dict,
+) -> dict:
     url = (args.get("url") or "").strip()
     if not url:
         return {"success": False, "error": "url is required"}

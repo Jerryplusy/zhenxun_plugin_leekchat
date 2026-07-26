@@ -89,7 +89,7 @@ __plugin_meta__ = PluginMetadata(
     usage="@bot、使用昵称触发或引用都可以哦",
     extra=PluginExtraData(
         author="Jerryplusy",
-        version="1.0.0",
+        version="1.0.1",
         menu_type="聊天功能",
         configs=_all_configs,
         limits=[PluginCdBlock(cd=5, result="每5秒才能发一条哦~")],

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ...configs import LeekchatConfig
+    from ..types import BotProtocol
 
 
 def _segment_data(segment: Any) -> tuple[str | None, dict[str, Any]]:
@@ -55,7 +59,7 @@ def get_card_data(segment: Any) -> str:
 
 
 async def get_video_source_candidates_from_message(
-    bot: Any | None, message_id: Any
+    bot: "BotProtocol | None", message_id: int | str | None
 ) -> list[str]:
     if bot is None or message_id is None:
         return []
@@ -77,7 +81,7 @@ async def get_video_source_candidates_from_message(
     return urls
 
 
-def is_media_analysis_blocked(config: Any, user_id: int) -> bool:
+def is_media_analysis_blocked(config: "LeekchatConfig", user_id: int) -> bool:
     blacklist = getattr(config, "mediaAnalysisBlacklistUsers", None) or []
     try:
         blocked_ids = {int(value) for value in blacklist if str(value).strip()}

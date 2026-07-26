@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from ..configs import LeekchatConfig
+    from ..humanize import HumanizeEngine
     from ..managers import (
         CooldownManager,
         GroupStructuredHistoryManager,
@@ -16,6 +19,10 @@ if TYPE_CHECKING:
         SessionTurnScheduler,
         SkillSessionManager,
     )
+
+    from .config_provider import ChatConfigProvider
+    from .tools.context import ToolContext
+    from .types import AIInstance, AIService
 
 
 @dataclass
@@ -53,18 +60,18 @@ class ChatResult:
     pending_quote: int | None = None
     tool_calls: list[dict] = field(default_factory=list)
     emoji_path: str | None = None
-    protocol_messages: list[Any] = field(default_factory=list)
+    protocol_messages: list[object] = field(default_factory=list)
 
 
 @dataclass
 class PromptCtx:
-    config: Any
+    config: LeekchatConfig
     bot_nickname: str
     bot_role: str = "member"
     is_group: bool = True
     group_name: str | None = None
     member_count: int | None = None
-    ai_service: Any | None = None
+    ai_service: AIService | None = None
     target_message: TargetMessage | None = None
     reply_context: dict | None = None
     prompt_injections: list[dict] | None = None
@@ -82,37 +89,36 @@ class PromptCtx:
 
 @dataclass
 class ChatPluginContext:
-    config_provider: Any
-    get_config: Any
-    db: Any
-    ai_instance: Any | None = None
-    work_ai_instance: Any | None = None
-    vision_ai_instance: Any | None = None
-    get_ai_instance: Any | None = None
-    ai_service: Any | None = None
-    humanize: Any | None = None
+    config_provider: ChatConfigProvider
+    get_config: Callable[[int | None], Awaitable[LeekchatConfig]]
+    db: object
+    ai_instance: AIInstance | None = None
+    work_ai_instance: AIInstance | None = None
+    vision_ai_instance: AIInstance | None = None
+    get_ai_instance: Callable[..., AIInstance | None] | None = None
+    ai_service: AIService | None = None
+    humanize: HumanizeEngine | None = None
 
-    session_manager: Any | None = None
-    skill_manager: Any | None = None
-    rate_limiter: Any | None = None
-    queue_manager: Any | None = None
-    group_structured_history: Any | None = None
-    cooldown_manager: Any | None = None
-    idle_check_manager: Any | None = None
-    queue_processor: Any | None = None
-    session_turn_scheduler: Any | None = None
-
-    run_with_rate_limit_guard: Any | None = None
-    run_chat: Any | None = None
-    build_tool_context: Any | None = None
-    send_message: Any | None = None
-    send_ai_response: Any | None = None
-    send_emoji: Any | None = None
-    save_bot_messages: Any | None = None
-    get_group_history_messages: Any | None = None
-    get_group_info_data: Any | None = None
-    get_humanize_contexts: Any | None = None
-    build_history_media_options: Any | None = None
-    build_structured_user_input_from_target: Any | None = None
-    start_cooldown_timer: Any | None = None
-    record_group_message_for_learning: Any | None = None
+    session_manager: SessionManager | None = None
+    skill_manager: SkillSessionManager | None = None
+    rate_limiter: RateLimiter | None = None
+    queue_manager: MessageQueueManager | None = None
+    group_structured_history: GroupStructuredHistoryManager | None = None
+    cooldown_manager: CooldownManager | None = None
+    idle_check_manager: IdleCheckManager | None = None
+    queue_processor: QueueProcessor | None = None
+    session_turn_scheduler: SessionTurnScheduler | None = None
+    run_with_rate_limit_guard: RateLimitGuard | None = None
+    run_chat: Callable[..., Awaitable[ChatResult]] | None = None
+    build_tool_context: Callable[..., ToolContext] | None = None
+    send_message: Callable[..., Awaitable[None]] | None = None
+    send_ai_response: Callable[..., Awaitable[None]] | None = None
+    send_emoji: Callable[..., Awaitable[None]] | None = None
+    save_bot_messages: Callable[..., Awaitable[None]] | None = None
+    get_group_history_messages: Callable[..., Awaitable[list[ChatMessage]]] | None = None
+    get_group_info_data: Callable[..., Awaitable[dict]] | None = None
+    get_humanize_contexts: Callable[..., Awaitable[dict]] | None = None
+    build_history_media_options: Callable[..., object] | None = None
+    build_structured_user_input_from_target: Callable[..., dict] | None = None
+    start_cooldown_timer: Callable[..., Awaitable[None]] | None = None
+    record_group_message_for_learning: Callable[..., Awaitable[None]] | None = None

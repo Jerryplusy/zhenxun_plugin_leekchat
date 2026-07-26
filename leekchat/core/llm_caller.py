@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from zhenxun.services.ai.core.messages import ChatRequest, ChatResponse, LLMMessage
 from zhenxun.services.ai.llm.builder import IntentBuilder
@@ -22,7 +21,7 @@ class LLMCaller:
         on_delta: OnTextDelta | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-        tools: list[Any] | None = None,
+        tools: list | None = None,
         timeout: float | None = None,
         debug: bool = False,
     ) -> ChatResponse:

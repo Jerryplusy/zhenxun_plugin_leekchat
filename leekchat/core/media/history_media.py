@@ -4,10 +4,15 @@ import asyncio
 import hashlib
 import os
 import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.log import logger
+
+if TYPE_CHECKING:
+    from ..types import BotProtocol
+    from ...managers import RateLimitGuard
 
 VIDEO_FRAME_COUNT = 5
 VIDEO_FULL_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
@@ -27,7 +32,7 @@ def _hash_source(value: str) -> str:
     return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
 
 
-async def _download_bytes(url: str, bot: Any | None = None) -> bytes:
+async def _download_bytes(url: str, bot: "BotProtocol | None" = None) -> bytes:
     if bot is not None:
         try:
             resp = await bot.call_api("get_image", file=url)
@@ -60,7 +65,7 @@ async def _download_bytes(url: str, bot: Any | None = None) -> bytes:
         return b""
 
 
-async def _download_video(sources: list[str], bot: Any | None = None) -> tuple[bytes, str] | None:
+async def _download_video(sources: list[str], bot: "BotProtocol | None" = None) -> tuple[bytes, str] | None:
     for source in sources:
         try:
             raw = await _download_bytes(source, bot=bot)
@@ -228,10 +233,10 @@ def _probe_mime(_video_bytes: bytes) -> str:
 
 async def summarize_history_video(
     video_source: str | list[str],
-    bot: Any | None = None,
-    ai_generate: Any | None = None,
+    bot: "BotProtocol | None" = None,
+    ai_generate: Callable[..., Awaitable[Any]] | None = None,
     model_name: str | None = None,
-    rate_limit_guard: Any | None = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
 ) -> str:
     sources = [video_source] if isinstance(video_source, str) else list(video_source)
@@ -380,7 +385,7 @@ async def _summarize_text_content(
     label: str,
     text: str,
     working_model: str,
-    ai_generate: Any,
+    ai_generate: Callable[..., Awaitable[Any]],
 ) -> str:
     """文本摘要：调工作模型"""
     truncated = text[:8000] if len(text) > 8000 else text
@@ -407,7 +412,7 @@ async def _summarize_text_content(
     return _normalize_summary(getattr(resp, "text", None))
 
 
-def _extract_forward_text(result: Any) -> str:
+def _extract_forward_text(result: dict[str, Any] | Any) -> str:
     if not isinstance(result, dict):
         return ""
     messages = result.get("messages") or result.get("data", {}).get("messages") or []
@@ -502,10 +507,10 @@ async def _get_cached_card_summary(card_data: str) -> str | None:
 
 async def summarize_history_forward(
     forward_id: str,
-    bot: Any | None = None,
-    ai_generate: Any | None = None,
+    bot: "BotProtocol | None" = None,
+    ai_generate: Callable[..., Awaitable[Any]] | None = None,
     working_model: str | None = None,
-    rate_limit_guard: Any | None = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
 ) -> str:
     fid = (forward_id or "").strip()
@@ -547,9 +552,9 @@ async def summarize_history_forward(
 
 async def summarize_history_card(
     card_data: str,
-    ai_generate: Any | None = None,
+    ai_generate: Callable[..., Awaitable[Any]] | None = None,
     working_model: str | None = None,
-    rate_limit_guard: Any | None = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
 ) -> str:
     source = (card_data or "").strip()
@@ -646,9 +651,9 @@ def _notice_timestamp(notice: Any) -> int:
 
 async def summarize_group_notice(
     notice: Any,
-    ai_generate: Any | None = None,
+    ai_generate: Callable[..., Awaitable[Any]] | None = None,
     working_model: str | None = None,
-    rate_limit_guard: Any | None = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
 ) -> dict[str, Any] | None:
     """摘要群公告，返回可写入聊天历史的用户消息载荷。"""

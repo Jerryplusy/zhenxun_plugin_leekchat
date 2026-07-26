@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
+from nonebot.adapters.onebot.v11 import Bot, NoticeEvent
 
 from ..core.context import TargetMessage
 from ..core.engine import process_chat
@@ -17,7 +18,11 @@ POKE_COOLDOWN_MS = 60_000
 _poke_cooldowns: dict[int, int] = {}
 
 
-async def handle_poke(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) -> None:
+async def handle_poke(
+    plugin_ctx: "ChatPluginContext",
+    event: NoticeEvent,
+    bot: Bot,
+) -> None:
     self_id = getattr(event, "self_id", None)
     if bot is None or not self_id:
         return

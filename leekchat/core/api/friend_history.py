@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.log import logger
 
 from ..context import ChatMessage
+
+if TYPE_CHECKING:
+    from ..types import BotProtocol
 
 _PER_CALL_LIMIT = 20
 _HARD_CAP = 500
@@ -102,7 +105,7 @@ def _extract_messages(resp: Any) -> list[dict]:
 
 
 async def fetch_friend_history_messages(
-    bot: Any,
+    bot: "BotProtocol",
     user_id: int,
     self_id: int,
     limit: int,

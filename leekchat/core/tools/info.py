@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-import re
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
 
 from .permissions import ToolPermission, ToolScope
 
+if TYPE_CHECKING:
+    from ..types import AIInstance, BotProtocol
+    from .context import ToolContext
 
-def _resolve_bot(tool_ctx):
+
+def _resolve_bot(tool_ctx: "ToolContext") -> "BotProtocol | None":
     bot = getattr(tool_ctx, "bot", None)
     if bot is not None:
         return bot
@@ -22,7 +25,7 @@ def _resolve_bot(tool_ctx):
     return None
 
 
-async def _get_member_info(tool_ctx: Any, user_id: int) -> dict:
+async def _get_member_info(tool_ctx: "ToolContext", user_id: int) -> dict:
     bot = _resolve_bot(tool_ctx)
     if not bot or not tool_ctx.group_id:
         return {"error": "Bot or groupId unavailable"}
@@ -45,7 +48,7 @@ async def _get_member_info(tool_ctx: Any, user_id: int) -> dict:
         return {"error": f"Failed to get member info: {e}"}
 
 
-async def _get_member_list(tool_ctx: Any, limit: int) -> dict:
+async def _get_member_list(tool_ctx: "ToolContext", limit: int) -> dict:
     bot = _resolve_bot(tool_ctx)
     if not bot or not tool_ctx.group_id:
         return {"error": "Bot or groupId unavailable"}
@@ -69,7 +72,7 @@ async def _get_member_list(tool_ctx: Any, limit: int) -> dict:
         return {"error": f"Failed to get member list: {e}"}
 
 
-async def _get_media_by_message_id(bot: Any, message_id: int) -> dict:
+async def _get_media_by_message_id(bot: "BotProtocol", message_id: int) -> dict:
     from ..media.segment import get_forward_id, get_segment_source_candidates, get_segment_type, get_segment_url
 
     try:
@@ -97,7 +100,7 @@ async def _get_media_by_message_id(bot: Any, message_id: int) -> dict:
     return {"error": "No image, video, or forward message found"}
 
 
-async def _describe_video(tool_ctx: Any, video_sources: list[str]) -> dict:
+async def _describe_video(tool_ctx: "ToolContext", video_sources: list[str]) -> dict:
     ai = getattr(tool_ctx.ai_service, "getDefault", lambda: None)()
     if ai is None:
         return {"success": False, "error": "AI instance not available"}
@@ -136,7 +139,12 @@ async def _download_video_bytes(sources: list[str]) -> bytes | None:
     return None
 
 
-async def _describe_video_by_frames(tool_ctx: Any, sources: list[str], ai, model: str) -> dict:
+async def _describe_video_by_frames(
+    tool_ctx: "ToolContext",
+    sources: list[str],
+    ai: "AIInstance",
+    model: str,
+) -> dict:
     try:
         from ..media.history_media import VIDEO_FRAME_EXTRACTION_FALLBACK, _extract_video_frames
         frames = await _extract_video_frames(sources[0])
@@ -157,7 +165,7 @@ async def _describe_video_by_frames(tool_ctx: Any, sources: list[str], ai, model
         return {"success": False, "error": str(e)}
 
 
-async def _handle_view_media(tool_ctx: Any, args: dict) -> Any:
+async def _handle_view_media(tool_ctx: "ToolContext", args: dict) -> dict | list:
     message_id = args.get("message_id")
     if not message_id:
         return {"error": "message_id is required"}
@@ -206,7 +214,11 @@ async def _handle_view_media(tool_ctx: Any, args: dict) -> Any:
     return {"error": "Unknown media kind"}
 
 
-async def _attach_video_to_context(tool_ctx: Any, video_sources: list[str], message_id: int) -> Any:
+async def _attach_video_to_context(
+    tool_ctx: "ToolContext",
+    video_sources: list[str],
+    message_id: int,
+) -> dict | list:
     from ..media.history_media import VIDEO_FULL_UPLOAD_MAX_BYTES
 
     video_bytes = await _download_video_bytes(video_sources)
@@ -240,7 +252,7 @@ def _avatar_url(user_id: int) -> str:
     return f"https://q1.qlogo.cn/g?b=qq&nk={user_id}&s=640"
 
 
-async def _describe_image(tool_ctx: Any, image_url: str, prompt: str) -> dict:
+async def _describe_image(tool_ctx: "ToolContext", image_url: str, prompt: str) -> dict:
     ai = getattr(tool_ctx.ai_service, "getDefault", lambda: None)()
     if ai is None:
         return {"success": False, "error": "AI instance not available"}
@@ -260,7 +272,7 @@ async def _describe_image(tool_ctx: Any, image_url: str, prompt: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
-def build_info_tools(tool_ctx: Any) -> list[dict]:
+def build_info_tools(tool_ctx: "ToolContext") -> list[dict]:
     tools: list[dict] = []
 
     if tool_ctx.group_id:

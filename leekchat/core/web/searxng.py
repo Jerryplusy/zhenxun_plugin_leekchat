@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
+if TYPE_CHECKING:
+    from ...configs import SearxngConfig
 
-async def search_web_with_searxng(config: Any, args: dict) -> dict:
+
+async def search_web_with_searxng(config: "SearxngConfig", args: dict) -> dict:
     base_url = (getattr(config, "baseUrl", "") or "").rstrip("/")
     if not base_url:
         return {"success": False, "error": "SearXNG baseUrl not configured"}
@@ -28,7 +31,7 @@ async def search_web_with_searxng(config: Any, args: dict) -> dict:
     requested_limit = int(args.get("limit") or default_limit)
     limit = max(1, min(requested_limit, max_limit))
 
-    params: dict[str, Any] = {
+    params: dict[str, str | int] = {
         "q": query,
         "format": "json",
         "language": "zh-CN",

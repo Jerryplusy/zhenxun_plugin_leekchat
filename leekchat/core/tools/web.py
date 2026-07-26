@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
 
 from ...core.web import read_web_page, search_web_with_searxng
 from .permissions import ToolPermission, ToolScope
 
+if TYPE_CHECKING:
+    from .context import ToolContext
 
-def build_web_search_tool(tool_ctx: Any) -> dict:
+
+def build_web_search_tool(tool_ctx: "ToolContext") -> dict:
     return {
         "name": "web_search",
         "description": (
@@ -46,7 +49,7 @@ def build_web_search_tool(tool_ctx: Any) -> dict:
     }
 
 
-def build_web_read_page_tool(tool_ctx: Any) -> dict:
+def build_web_read_page_tool(tool_ctx: "ToolContext") -> dict:
     async def handler(args):
         try:
             ai = None

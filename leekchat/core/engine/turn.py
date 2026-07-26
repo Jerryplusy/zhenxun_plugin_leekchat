@@ -12,16 +12,19 @@ from ..api.group_history import fetch_group_history_messages
 from .stream_parser import parse_line_markers
 
 if TYPE_CHECKING:
+    from ...configs import LeekchatConfig
     from ..context import ChatPluginContext
+    from ..tools.context import ToolContext
+    from ..types import BotProtocol, ChatEvent
 
 
 async def get_group_history_messages(
-    bot: Any | None,
+    bot: BotProtocol | None,
     group_id: int | None,
     session_id: str,
     limit: int,
     self_id: int | None = None,
-    media_config: Any | None = None,
+    media_config: LeekchatConfig | None = None,
     user_id: int | None = None,
 ) -> list[ChatMessage]:
     """优先走 OneBot API；bot 不可用时回退数据库"""
@@ -114,19 +117,19 @@ async def get_humanize_contexts(
 
 def build_tool_context(
     plugin_ctx: "ChatPluginContext",
-    event: Any,
+    event: ChatEvent,
     self_id: int,
     session_id: str,
     group_id: int | None,
     user_id: int,
-    config,
+    config: LeekchatConfig,
     ai_service,
     db,
     bot_role: str,
     target_message,
     humanize,
     pending_image_urls: list[str] | None = None,
-) -> Any:
+) -> ToolContext:
     from ..tools.context import ToolContext
     from ..tools.permissions import compute_user_permission_sync
 
@@ -163,8 +166,8 @@ async def finalize_chat_turn(
     plugin_ctx: "ChatPluginContext",
     *,
     event: Any,
-    bot: Any | None = None,
-    cfg,
+    bot: BotProtocol | None = None,
+    cfg: LeekchatConfig,
     result,
     group_id: int | None,
     session_id: str,

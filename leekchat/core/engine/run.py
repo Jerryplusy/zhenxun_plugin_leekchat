@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.ai.core.messages import AssistantMessage, LLMMessage, TextPart
 from zhenxun.services.ai.core.messages.parts import ImagePart
@@ -18,6 +18,10 @@ from ..prompt import build_dynamic_user_context, build_static_system_prompt
 from ..tools.registry import build_tools
 from .stream import create_think_tag_stream_filter
 from .stream_parser import parse_line_markers
+
+if TYPE_CHECKING:
+    from ..tools.context import ToolContext
+    from ..types import AIInstance
 
 _LEGACY_TOOL_RE = re.compile(
     r"\[(web_search|web_read_page):([^\]]+)\]", re.IGNORECASE
@@ -40,8 +44,8 @@ def _build_available_tools_section(framework_tools: list) -> str:
 
 
 async def run_chat(
-    ai: Any,
-    tool_ctx: Any,
+    ai: AIInstance,
+    tool_ctx: ToolContext,
     chat_history: list[ChatMessage],
     target_message,
     prompt_ctx,
@@ -90,7 +94,7 @@ async def run_chat(
         user_context = f"{available_tools_text}\n\n{user_context}"
 
     pending_image_urls = getattr(tool_ctx, "pending_image_urls", []) or []
-    user_parts: list[Any] = [
+    user_parts: list[TextPart | ImagePart] = [
         TextPart(
             text=(
                 f"{user_context}\n\n---\n\n[User message]\n"

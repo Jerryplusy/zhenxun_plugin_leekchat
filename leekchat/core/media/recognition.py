@@ -25,7 +25,9 @@ from .segment import (
 )
 
 if TYPE_CHECKING:
+    from ...configs import LeekchatConfig
     from ..context import ChatPluginContext
+    from ..types import BotProtocol
 
 
 _MEDIA_SEGMENT_TYPES = {
@@ -49,6 +51,8 @@ class MediaRecognitionResult:
 
 
 def _event_value(event: Any, *keys: str) -> Any:
+    # `event` 在真实运行中可能是 NoneBot Event 对象或上游序列化后的 dict，
+    # 双分支访问不可避免，类型无法用 Protocol 约束。
     for key in keys:
         if isinstance(event, dict):
             value = event.get(key)
@@ -94,8 +98,8 @@ def _schedule(coro, label: str) -> None:
 async def _recognize_segments(
     plugin_ctx: "ChatPluginContext",
     event: Any,
-    bot: Any,
-    cfg: Any,
+    bot: "BotProtocol",
+    cfg: "LeekchatConfig",
     user_id: int,
     group_id: int,
 ) -> list[str]:
@@ -176,7 +180,10 @@ async def _recognize_segments(
 
 
 async def _recognize_announcement(
-    plugin_ctx: "ChatPluginContext", event: Any, cfg: Any, bot: Any
+    plugin_ctx: "ChatPluginContext",
+    event: Any,
+    cfg: "LeekchatConfig",
+    bot: "BotProtocol",
 ) -> None:
     group_id = int(_event_value(event, "group_id") or 0)
     user_id = int(
@@ -221,8 +228,8 @@ async def _recognize_announcement(
 async def recognize_group_media_event(
     plugin_ctx: "ChatPluginContext",
     event: Any,
-    bot: Any,
-    cfg: Any | None = None,
+    bot: "BotProtocol",
+    cfg: "LeekchatConfig | None" = None,
 ) -> MediaRecognitionResult:
     """群聊媒体识别唯一入口，统一处理开关、黑名单和所有媒体类型。"""
     if (

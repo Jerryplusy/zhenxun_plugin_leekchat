@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .context import ToolContext
 
 
 class ToolPermission(IntEnum):
@@ -31,7 +34,7 @@ def compute_user_permission_sync(user_id: int, user_role: str) -> ToolPermission
 
 
 async def check_runtime_permission(
-    tool_ctx: Any, min_perm: ToolPermission
+    tool_ctx: "ToolContext", min_perm: ToolPermission
 ) -> bool:
     if min_perm == ToolPermission.MEMBER:
         return True

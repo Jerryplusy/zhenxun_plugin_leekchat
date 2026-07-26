@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.log import logger
 
 from ..context import ChatMessage
+
+if TYPE_CHECKING:
+    from ...configs import LeekchatConfig
+    from ..types import BotProtocol
 
 _PER_CALL_LIMIT = 20
 _HARD_CAP = 500
@@ -267,11 +271,11 @@ def _extract_messages(resp: Any) -> list[dict]:
 
 
 async def fetch_group_history_messages(
-    bot: Any,
+    bot: "BotProtocol",
     group_id: int,
     self_id: int,
     limit: int,
-    media_config: Any | None = None,
+    media_config: "LeekchatConfig | None" = None,
 ) -> list[ChatMessage]:
     if bot is None or not group_id:
         logger.info(f"[group_history] group={group_id} 无 bot 或无 group_id，跳过")

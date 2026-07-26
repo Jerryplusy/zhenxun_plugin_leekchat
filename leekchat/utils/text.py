@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..configs import LeekchatConfig
 
 _THINK_RE = re.compile(r"<think[\s\S]*?</think>", re.IGNORECASE)
 
@@ -53,7 +56,7 @@ def sanitize_brackets(text: str) -> str:
     return "".join(chars)
 
 
-def is_group_allowed(group_id: int, cfg: Any) -> bool:
+def is_group_allowed(group_id: int, cfg: "LeekchatConfig") -> bool:
     blacklist = set(cfg.blacklistGroups or [])
     whitelist = set(cfg.whitelistGroups or [])
     if whitelist:

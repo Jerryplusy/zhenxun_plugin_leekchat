@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
+from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 
 from ..core.engine import process_chat
 from ..core.media.recognition import (
@@ -25,7 +26,11 @@ if TYPE_CHECKING:
     from ..core.context import ChatPluginContext
 
 
-async def handle_message(plugin_ctx: "ChatPluginContext", event: Any, bot: Any) -> None:
+async def handle_message(
+    plugin_ctx: "ChatPluginContext",
+    event: MessageEvent,
+    bot: Bot,
+) -> None:
     self_id = getattr(event, "self_id", None)
     if bot is None or not self_id:
         return

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
+
+if TYPE_CHECKING:
+    from ..types import BotProtocol
 
 
 def _looks_like_gif(url: str, content_type: str | None = None) -> bool:
@@ -15,7 +18,7 @@ def _looks_like_gif(url: str, content_type: str | None = None) -> bool:
     return False
 
 
-async def is_gif_url(url: str, bot: Any | None = None) -> bool:
+async def is_gif_url(url: str, bot: "BotProtocol | None" = None) -> bool:
     if not url:
         return False
     if _looks_like_gif(url):
@@ -45,7 +48,7 @@ async def is_gif_url(url: str, bot: Any | None = None) -> bool:
 
 async def extract_gif_frames(
     gif_url: str,
-    bot: Any | None = None,
+    bot: "BotProtocol | None" = None,
     max_frames: int = 3,
 ) -> list[str] | None:
     if not gif_url:
@@ -93,7 +96,7 @@ async def extract_gif_frames(
         return None
 
 
-async def _download_bytes(url: str, bot: Any | None = None) -> bytes:
+async def _download_bytes(url: str, bot: "BotProtocol | None" = None) -> bytes:
     if bot is not None:
         try:
             resp = await bot.call_api("get_image", file=url)

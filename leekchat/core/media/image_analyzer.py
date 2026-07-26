@@ -1,12 +1,14 @@
 from __future__ import annotations
-
-import asyncio
 import base64
 import hashlib
 import time
-from typing import Any
+from typing import TYPE_CHECKING
 
 from zhenxun.services.log import logger
+
+if TYPE_CHECKING:
+    from ..types import AIInstance, BotProtocol
+    from ...managers import RateLimitGuard
 
 
 def content_hash(image_bytes: bytes) -> str:
@@ -15,7 +17,7 @@ def content_hash(image_bytes: bytes) -> str:
 
 
 async def _download_image_bytes(
-    image_url: str, bot: Any | None = None
+    image_url: str, bot: "BotProtocol | None" = None
 ) -> bytes:
     if not image_url:
         return b""
@@ -69,13 +71,13 @@ async def _download_image_bytes(
 
 
 async def describe_image(
-    ai: Any,
+    ai: "AIInstance | None",
     image_url: str,
     model_name: str | None,
     raw_message: str | None = None,
-    rate_limit_guard: Any | None = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
-    bot: Any | None = None,
+    bot: "BotProtocol | None" = None,
 ) -> dict:
     try:
         from zhenxun.services.ai.core.messages import LLMMessage
@@ -196,8 +198,8 @@ async def process_image(
 async def get_or_recognize_image(
     image_url: str,
     model_name: str | None,
-    bot: Any | None = None,
-    rate_limit_guard: Any | None = None,
+    bot: "BotProtocol | None" = None,
+    rate_limit_guard: "RateLimitGuard | None" = None,
     rate_limit_context: dict | None = None,
 ) -> dict:
     from ...models import ImageCache

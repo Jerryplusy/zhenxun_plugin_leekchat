@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from zhenxun.services.ai.tools.core import FunctionTool
 
@@ -9,8 +9,11 @@ from .info import build_info_tools
 from .permissions import ToolPermission, ToolScope, check_runtime_permission
 from .web import build_web_read_page_tool, build_web_search_tool
 
+if TYPE_CHECKING:
+    from .context import ToolContext
 
-def _to_framework_tool(raw_tool: dict[str, Any], tool_ctx: Any) -> FunctionTool:
+
+def _to_framework_tool(raw_tool: dict[str, Any], tool_ctx: "ToolContext") -> FunctionTool:
     handler = raw_tool["handler"]
     min_perm = raw_tool.get("min_permission", ToolPermission.MEMBER)
     name = raw_tool.get("name", "")
@@ -39,7 +42,7 @@ def _to_framework_tool(raw_tool: dict[str, Any], tool_ctx: Any) -> FunctionTool:
 
 
 def _filter_tools(
-    tools: list[dict], tool_ctx: Any
+    tools: list[dict], tool_ctx: "ToolContext"
 ) -> list[dict]:
     is_private_chat = getattr(tool_ctx, "group_id", None) is None
     user_perm: ToolPermission = getattr(
@@ -61,7 +64,7 @@ def _filter_tools(
     return filtered
 
 
-def build_tools(tool_ctx: Any) -> dict:
+def build_tools(tool_ctx: "ToolContext") -> dict:
     chat_tools = build_info_tools(tool_ctx)
 
     config = getattr(tool_ctx, "config", None)
