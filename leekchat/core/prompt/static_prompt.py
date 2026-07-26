@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .features import (
-    AUDIO_MODE_LINE,
+    # AUDIO_MODE_LINE,
     EMOJI_MODE_LINE,
     MARKDOWN_MODE_LINE,
     TOOL_INTENSITY_BLOCK,
@@ -73,7 +73,7 @@ def build_response_format_section(
   - **If your reply has multiple sentences or different points, ALWAYS use real line breaks to separate them**
   - NEVER use "\\\\" or literal "\\\\n" to simulate a new line
 - **MESSAGE ORDER MATTERS**: messages are sent top-to-bottom, one line at a time.
-- For action markers like [] or [audio:...], put them on their own line when they are meant to be a separate action.
+# - For action markers like [] or [audio:...], put them on their own line when they are meant to be a separate action.
 
 - **SPECIAL ACTIONS in your text (auto-parsed and removed from message):**
   - Use [at:123456] in your text to @ someone (123456 is the QQ number)
@@ -82,16 +82,17 @@ def build_response_format_section(
   - **You can use MULTIPLE [reply:xxx] markers in different lines to quote multiple messages!**
   - These markers will be automatically parsed and removed from your sent message""")
 
-    audio_cfg = getattr(config, "audio", None)
-    if audio_cfg and getattr(audio_cfg, "enabled", False) and getattr(audio_cfg, "baseUrl", "").strip():
-        lines.append(f"""
-### Optional Voice Message Format
-- You MAY optionally send one voice message by writing [audio:content]
-- Audio is OPTIONAL. Do NOT use it in every reply
-The voice message function sends plain text and cannot be used for singing. If a user needs you to sing, other skills should be considered first.
-- Put [audio:...] on its own line when you want it sent as a separate message in sequence
-- Example: "[audio:おはようー]"
-{AUDIO_MODE_LINE.get(audio_strength, AUDIO_MODE_LINE["medium"])}""")
+    # TODO: 音频功能
+    # audio_cfg = getattr(config, "audio", None)
+    # if audio_cfg and getattr(audio_cfg, "enabled", False) and getattr(audio_cfg, "baseUrl", "").strip():
+    #     lines.append(f"""
+    # ### Optional Voice Message Format
+    # - You MAY optionally send one voice message by writing [audio:content]
+    # - Audio is OPTIONAL. Do NOT use it in every reply
+    # The voice message function sends plain text and cannot be used for singing. If a user needs you to sing, other skills should be considered first.
+    # - Put [audio:...] on its own line when you want it sent as a separate message in sequence
+    # - Example: "[audio:おはようー]"
+    # {AUDIO_MODE_LINE.get(audio_strength, AUDIO_MODE_LINE["medium"])}""")
 
     if getattr(config, "enableMarkdownScreenshot", False):
         lines.append(f"""

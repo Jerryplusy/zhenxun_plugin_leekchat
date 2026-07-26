@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+import time
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import nonebot
 from nonebot.adapters import Bot as BaseBot
 from nonebot.exception import MockApiException
-from nonebot.message import handle_event
+import nonebot.message as nonebot_message
 
 from zhenxun.services.log import logger
 
@@ -132,19 +133,20 @@ def _build_fake_event(event, command: str):
     from nonebot.adapters.onebot.v11 import Message
 
     now = int(time.time())
+    message_id = -int(time.time() * 1000)
     message = Message(command)
     fake = event.copy(
         update={
             "message": message,
             "original_message": Message(command),
             "raw_message": command,
-            "message_id": -now,
+            "message_id": message_id,
             "time": now,
             "to_me": False,
         }
     )
-    # 合成事件标记：chkdsk 恶意触发检测据此豁免，leekchat 自身据此防回环
     object.__setattr__(fake, "_ai_triggered", True)
+    object.__setattr__(fake, "__uniseg_message_id__", f"leekchat-skill:{uuid4().hex}")
     return fake
 
 
@@ -177,9 +179,7 @@ async def execute_plugin_command(
     token = _capture_ctx.set(state)
     timed_out = False
     try:
-        # create_task 复制当前 context，CaptureState 对整个处理链
-        # （含插件内部 create_task 的延续）可见
-        task = asyncio.create_task(handle_event(bot, fake_event))
+        task = asyncio.create_task(nonebot_message.handle_event(bot, fake_event))
         try:
             await asyncio.wait_for(asyncio.shield(task), timeout)
         except asyncio.TimeoutError:
@@ -195,7 +195,10 @@ async def execute_plugin_command(
 
     replies = [r for r in state.captured if r]
     result: dict[str, Any] = {
-        "success": not timed_out,
+        "success": not timed_out and bool(replies),
+        "outcome": (
+            "timed_out" if timed_out else "replied" if replies else "no_reply"
+        ),
         "executed": command,
         "mode": mode,
         "replies": replies,
@@ -204,8 +207,8 @@ async def execute_plugin_command(
         result["note"] = "Timed out. Plugin may still be running in the background; captured replies are above."
     elif not replies:
         result["note"] = (
-            "No visible reply. Likely causes: command did not match (check the usage doc), "
-            "the triggering user was blocked by permission/CD, or the plugin executed silently."
+            "No reply API was observed. The command did not match, was blocked before its "
+            "handler ran, or the plugin completed silently."
         )
     elif mode == "quiet":
         result["note"] = "Reply was intercepted and NOT sent to chat. Summarize the relevant content for the user."

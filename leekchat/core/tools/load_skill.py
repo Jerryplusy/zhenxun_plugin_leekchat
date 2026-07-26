@@ -75,7 +75,10 @@ def _build_execute_raw_tool(entry: "SkillEntry", tool_ctx: "ToolContext") -> dic
         if mode not in ("send", "quiet"):
             mode = "send"
         return await execute_plugin_command(
-            tool_ctx, command, mode=mode, timeout=timeout
+            tool_ctx,
+            command,
+            mode=mode,
+            timeout=timeout,
         )
 
     return {
