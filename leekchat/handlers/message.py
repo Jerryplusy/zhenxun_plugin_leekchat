@@ -133,13 +133,17 @@ async def handle_message(
             pass
 
     bot_role = "member"
-    try:
-        member = await bot.get_group_member_info(
-            group_id=group_id, user_id=self_id, no_cache=True
-        )
-        bot_role = (getattr(member, "role", "") or "member").lower()
-    except Exception:
-        pass
+    if group_id:
+        try:
+            member = await bot.get_group_member_info(
+                group_id=group_id, user_id=self_id, no_cache=True
+            )
+            bot_role = (getattr(member, "role", "") or "member").lower()
+            bot_card = (getattr(member, "card", "") or "").strip()
+            if bot_card:
+                bot_nickname = bot_card
+        except Exception:
+            pass
 
     try:
         await plugin_ctx.session_manager.get_or_create(

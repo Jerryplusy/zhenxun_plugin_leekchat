@@ -26,6 +26,7 @@ async def get_group_history_messages(
     self_id: int | None = None,
     media_config: LeekchatConfig | None = None,
     user_id: int | None = None,
+    bot_nickname: str | None = None,
 ) -> list[ChatMessage]:
     """优先走 OneBot API；bot 不可用时回退数据库"""
     if bot is not None and group_id:
@@ -36,6 +37,7 @@ async def get_group_history_messages(
                 self_id=self_id or 0,
                 limit=limit,
                 media_config=media_config,
+                bot_nickname=bot_nickname,
             )
             if api_history:
                 return api_history
@@ -53,6 +55,7 @@ async def get_group_history_messages(
                 user_id=user_id,
                 self_id=self_id or 0,
                 limit=limit,
+                bot_nickname=bot_nickname,
             )
             if api_history:
                 return api_history
@@ -262,6 +265,7 @@ async def process_chat(
         self_id=self_id,
         media_config=cfg,
         user_id=user_id,
+        bot_nickname=bot_nickname,
     )
 
     tool_ctx = build_tool_context(

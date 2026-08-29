@@ -24,6 +24,8 @@ def _render_segments(
     video_lookup: dict[str, str] | None = None,
     forward_lookup: dict[str, str] | None = None,
     card_lookup: dict[str, str] | None = None,
+    self_id: int | None = None,
+    bot_nickname: str | None = None,
 ) -> str:
     image_lookup = image_lookup or {}
     video_lookup = video_lookup or {}
@@ -38,7 +40,16 @@ def _render_segments(
         if seg_type == "text":
             tokens.append(("text", data.get("text", "")))
         elif seg_type == "at":
-            tokens.append(("at", f"@{data.get('qq', '')}"))
+            qq_raw = data.get("qq", "")
+            try:
+                qq_int = int(qq_raw) if qq_raw not in (None, "") else 0
+            except (TypeError, ValueError):
+                qq_int = 0
+            if self_id and qq_int and qq_int == self_id:
+                label_nick = (bot_nickname or "").strip() or "你"
+                tokens.append(("at", f"@你({label_nick})"))
+            else:
+                tokens.append(("at", f"@{qq_raw}"))
         elif seg_type == "image":
             url = data.get("url") or data.get("file") or ""
             desc = image_lookup.get(url)
@@ -104,6 +115,7 @@ def _to_chat_message(
     forward_lookup: dict[str, str] | None = None,
     card_lookup: dict[str, str] | None = None,
     media_analysis_allowed: bool = True,
+    bot_nickname: str | None = None,
 ) -> ChatMessage:
     sender = raw.get("sender") or {}
     user_id = int(sender.get("user_id") or 0)
@@ -125,6 +137,8 @@ def _to_chat_message(
         video_lookup=video_lookup if media_analysis_allowed else {},
         forward_lookup=forward_lookup if media_analysis_allowed else {},
         card_lookup=card_lookup if media_analysis_allowed else {},
+        self_id=self_id,
+        bot_nickname=bot_nickname,
     )
     return ChatMessage(
         id=message_id,
@@ -276,6 +290,7 @@ async def fetch_group_history_messages(
     self_id: int,
     limit: int,
     media_config: "LeekchatConfig | None" = None,
+    bot_nickname: str | None = None,
 ) -> list[ChatMessage]:
     if bot is None or not group_id:
         logger.info(f"[group_history] group={group_id} 无 bot 或无 group_id，跳过")
@@ -390,6 +405,7 @@ async def fetch_group_history_messages(
                 and int((m.get("sender") or {}).get("user_id") or 0)
                 not in blocked_users
             ),
+            bot_nickname=bot_nickname,
         )
         for m in collected
     ]

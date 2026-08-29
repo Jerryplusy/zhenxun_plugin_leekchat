@@ -18,6 +18,8 @@ _HARD_CAP = 500
 def _render_segments(
     segments: list,
     fallback: str = "",
+    self_id: int | None = None,
+    bot_nickname: str | None = None,
 ) -> str:
     tokens: list[str] = []
     for seg in segments:
@@ -27,6 +29,17 @@ def _render_segments(
         data = seg.get("data") or {}
         if seg_type == "text":
             tokens.append(data.get("text", ""))
+        elif seg_type == "at":
+            qq_raw = data.get("qq", "")
+            try:
+                qq_int = int(qq_raw) if qq_raw not in (None, "") else 0
+            except (TypeError, ValueError):
+                qq_int = 0
+            if self_id and qq_int and qq_int == self_id:
+                label_nick = (bot_nickname or "").strip() or "你"
+                tokens.append(f"@你({label_nick})")
+            else:
+                tokens.append(f"@{qq_raw}")
         elif seg_type == "face":
             tokens.append(f"[表情:{data.get('id', '')}]")
         elif seg_type == "image":
@@ -60,6 +73,7 @@ def _to_chat_message(
     raw: dict,
     self_id: int,
     user_id: int,
+    bot_nickname: str | None = None,
 ) -> ChatMessage:
     sender = raw.get("sender") or {}
     sender_user_id = int(sender.get("user_id") or 0)
@@ -76,6 +90,8 @@ def _to_chat_message(
     content = _render_segments(
         segments,
         fallback=raw.get("raw_message", ""),
+        self_id=self_id,
+        bot_nickname=bot_nickname,
     )
     return ChatMessage(
         id=message_id,
@@ -109,6 +125,7 @@ async def fetch_friend_history_messages(
     user_id: int,
     self_id: int,
     limit: int,
+    bot_nickname: str | None = None,
 ) -> list[ChatMessage]:
     if bot is None or not user_id:
         logger.info(f"[friend_history] user={user_id} 无 bot 或无 user_id，跳过")
@@ -176,6 +193,6 @@ async def fetch_friend_history_messages(
     )
 
     return [
-        _to_chat_message(m, self_id, user_id)
+        _to_chat_message(m, self_id, user_id, bot_nickname=bot_nickname)
         for m in collected
     ]

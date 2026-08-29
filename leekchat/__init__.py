@@ -51,6 +51,26 @@ _plugin_context: ChatPluginContext | None = None
 _chat_runtime: ChatRuntime | None = None
 
 
+async def _resolve_bot_nickname(bot, group_id: int | None, self_id: int | None) -> str:
+    cfg_provider = _plugin_context.config_provider if _plugin_context else None
+    cfg = cfg_provider() if cfg_provider is not None else None
+    default_nick = "Bot"
+    if cfg is not None and getattr(cfg, "nicknames", None):
+        default_nick = cfg.nicknames[0] or default_nick
+    if bot is None or not group_id or not self_id:
+        return default_nick
+    try:
+        member = await bot.get_group_member_info(
+            group_id=group_id, user_id=self_id, no_cache=True
+        )
+        card = (getattr(member, "card", "") or "").strip()
+        if card:
+            return card
+    except Exception:
+        pass
+    return default_nick
+
+
 @PriorityLifecycle.on_startup(priority=20)
 async def _init_plugin() -> None:
     global _plugin_context, _chat_runtime
@@ -117,6 +137,7 @@ async def _init_plugin() -> None:
                 self_id=self_id,
                 media_config=config_provider(),
                 user_id=uid,
+                bot_nickname=_resolve_bot_nickname(bot, gid, self_id),
             )
 
         async def get_messages_by_user(self, user_id, session_id=None, limit=20):
