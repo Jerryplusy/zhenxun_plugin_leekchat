@@ -3,6 +3,7 @@ from .markdown_message import (
     MARKDOWN_OPEN_TAG,
     consume_complete_stream_units,
     extract_standalone_markdown_block,
+    merge_reply_only_units,
     split_outgoing_units,
     summarize_markdown,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "is_media_analysis_blocked",
     "consume_complete_stream_units",
     "extract_standalone_markdown_block",
+    "merge_reply_only_units",
     "split_outgoing_units",
     "summarize_markdown",
 ]

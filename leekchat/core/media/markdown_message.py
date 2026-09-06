@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import re
+
 
 MARKDOWN_OPEN_TAG = "<MARKDOWN>"
 MARKDOWN_CLOSE_TAG = "</MARKDOWN>"
+
+_REPLY_MARKER_RE = re.compile(r"\[reply(?::(-?\d+))?\]", re.IGNORECASE)
 
 
 def split_outgoing_units(text: str) -> list[str]:
@@ -44,6 +48,46 @@ def split_outgoing_units(text: str) -> list[str]:
     if buffer.strip():
         result.append(buffer.strip())
     return result
+
+
+def _strip_reply_markers(text: str) -> str:
+    return _REPLY_MARKER_RE.sub("", text or "")
+
+def merge_reply_only_units(units: list[str]) -> list[str]:
+    if not units:
+        return list(units)
+
+    merged: list[str] = []
+    pending_reply: str | None = None
+
+    def _flush_with(text: str) -> None:
+        nonlocal pending_reply
+        stripped = (text or "").strip()
+        if pending_reply is not None:
+            merged.append(f"{pending_reply} {stripped}".strip())
+            pending_reply = None
+        elif stripped:
+            merged.append(stripped)
+
+    for unit in units:
+        stripped = (unit or "").strip()
+        if not stripped:
+            continue
+
+        if not _strip_reply_markers(stripped).strip():
+            pending_reply = (
+                f"{pending_reply} {stripped}".strip()
+                if pending_reply is not None
+                else stripped
+            )
+            continue
+
+        _flush_with(stripped)
+
+    if pending_reply is not None:
+        merged.append(pending_reply)
+
+    return merged
 
 
 def consume_complete_stream_units(buffer: str, force: bool) -> dict:

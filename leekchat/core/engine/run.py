@@ -245,13 +245,14 @@ async def run_chat(
         ctx={"groupId": getattr(tool_ctx, "group_id", None)},
     )
 
-    from ..media import split_outgoing_units
+    from ..media import merge_reply_only_units, split_outgoing_units
 
-    final_messages = [
+    split_units = [
         unit
         for unit in split_outgoing_units(sticker.cleaned_text)
         if unit.strip() and unit.strip() != "---"
     ]
+    final_messages = merge_reply_only_units(split_units)
 
     return ChatResult(
         messages=final_messages,
