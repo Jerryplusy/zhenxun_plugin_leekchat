@@ -59,12 +59,11 @@ async def run_chat(
     cfg = prompt_ctx.config if hasattr(prompt_ctx, "config") else prompt_ctx
     bot_nickname = getattr(prompt_ctx, "bot_nickname", "Bot")
     model_name = getattr(cfg, "mainModel", "") or ""
+    background_tasks: list = []
 
-    emotion_state = await humanize.emotion_agent.refresh_if_needed(
-        session_id=tool_ctx.session_id,
-        bot_nickname=bot_nickname,
-        chat_history=chat_history,
-        target_message=target_message,
+    session_group_id = getattr(tool_ctx, "group_id", None)
+    emotion_state = humanize.emotion_agent.get_current(
+        tool_ctx.session_id, session_group_id
     )
 
     framework_tools = build_tools(tool_ctx, skill_manager=skill_manager).get("tools", [])
@@ -220,6 +219,22 @@ async def run_chat(
     if response is None:
         return ChatResult(messages=[""], tool_calls=tool_records)
 
+    import asyncio
+
+    async def _background_emotion_refresh() -> None:
+        try:
+            await humanize.emotion_agent.refresh_if_needed(
+                session_id=tool_ctx.session_id,
+                bot_nickname=bot_nickname,
+                chat_history=chat_history,
+                target_message=target_message,
+                group_id=session_group_id,
+            )
+        except Exception as err:
+            logger.warning(f"[run_chat] background emotion refresh failed: {err}")
+
+    background_tasks.append(asyncio.create_task(_background_emotion_refresh()))
+
     raw_text = _strip_legacy_tool_markers(strip_think_blocks(response.text or ""))
 
     response_markers = parse_line_markers(raw_text)
@@ -243,6 +258,9 @@ async def run_chat(
     sticker = await humanize.emoji_agent.process_sticker_response(
         raw_text,
         ctx={"groupId": getattr(tool_ctx, "group_id", None)},
+        history=chat_history,
+        target_message=target_message,
+        bot_nickname=bot_nickname,
     )
 
     from ..media import merge_reply_only_units, split_outgoing_units

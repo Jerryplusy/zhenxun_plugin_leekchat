@@ -138,7 +138,7 @@ class LeekchatConfig(BaseModel):
     skillUsageMaxChars: int = 2000
     skillMaxLoadedPerSession: int = 5
     stream: bool = True
-    enableTypingDelay: bool = True
+    enableTypingDelay: bool = False
     typingDelayMaxTotalMs: int = 10_000
     enableMarkdownScreenshot: bool = True
     debug: bool = False
