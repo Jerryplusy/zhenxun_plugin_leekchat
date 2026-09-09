@@ -18,6 +18,7 @@ from .base import (
     RetentionConfig,
     SearxngConfig,
     TopicConfig,
+    TtsConfig,
     WebReaderConfig,
 )
 from .personalization import PERSONALIZATION_CONFIG
@@ -88,6 +89,22 @@ _HELP_MAP: dict[str, str] = {
     "baseStyle": "基础回复风格",
     "multipleStyles": "回复多风格列表（每行一条）",
     "multipleProbability": "多风格触发概率（0.0-1.0）",
+    # tts (GPT-SoVITS)
+    "tts": "GPT-SoVITS 本地 TTS 推理配置",
+    "model": "默认模型版本（v2 / v2Pro / v2ProPlus / v4）",
+    "device": "推理设备（auto / cuda / mps / cpu）",
+    "defaultLang": "默认目标语言",
+    "defaultRefAudio": "默认参考音频名称",
+    "host": "GPT-SoVITS API 监听地址（一般无需修改）",
+    "port": "GPT-SoVITS API 监听端口（一般无需修改）",
+    "pythonVersion": "Python 版本（3.10 / 3.11 / 3.12，一般无需修改）",
+    "pipIndexUrl": "pip 镜像源（一般无需修改）",
+    "hfMirror": "HuggingFace 镜像源（一般无需修改）",
+    "gitRemote": "GPT-SoVITS 仓库地址（一般无需修改）",
+    "huggingfaceRepo": "预训练权重 HuggingFace 仓库（一般无需修改）",
+    "defaultTextSplitMethod": "默认文本切分方法（一般无需修改）",
+    "inferenceTimeoutMs": "单次推理超时（毫秒，一般无需修改）",
+    "isHalf": "是否启用半精度推理（CUDA 上自动开启）",
     # memory
     "groupHistoryLimit": "群历史消息保留条数",
     "userHistoryLimit": "单用户历史消息保留条数",
@@ -155,6 +172,7 @@ __all__ = [
     "SETTINGS_CONFIG",
     "SearxngConfig",
     "TopicConfig",
+    "TtsConfig",
     "WebReaderConfig",
     "flatten_dict",
     "help_for",

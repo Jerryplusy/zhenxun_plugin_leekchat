@@ -44,6 +44,25 @@ class AudioConfig(BaseModel):
     timeoutMs: int = 40_000
 
 
+class TtsConfig(BaseModel):
+    model: str = "v2"
+    device: str = "auto"
+    host: str = "127.0.0.1"
+    port: int = 9881
+    pythonVersion: str = "3.10"
+    pipIndexUrl: str = "https://pypi.tuna.tsinghua.edu.cn/simple"
+    hfMirror: str = "https://hf-mirror.com"
+    gitRemote: str = (
+        "https://gh-proxy.com/https://github.com/RVC-Boss/GPT-SoVITS.git"
+    )
+    huggingfaceRepo: str = "lj1995/GPT-SoVITS"
+    defaultLang: str = "zh"
+    defaultTextSplitMethod: str = "cut5"
+    inferenceTimeoutMs: int = 120_000
+    isHalf: bool = True
+    defaultRefAudio: str = "miku-jp"
+
+
 class AIRequestLimitConfig(BaseModel):
     userRpm: int = 3
     groupRpm: int = 6
@@ -127,6 +146,7 @@ class LeekchatConfig(BaseModel):
     searxng: SearxngConfig = Field(default_factory=SearxngConfig)
     webReader: WebReaderConfig = Field(default_factory=WebReaderConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
+    tts: TtsConfig = Field(default_factory=TtsConfig)
     blacklistGroups: list[int] = Field(default_factory=list)
     whitelistGroups: list[int] = Field(default_factory=list)
     mediaAnalysisBlacklistUsers: list[int] = Field(default_factory=list)
@@ -183,6 +203,7 @@ SETTINGS_CONFIG: dict = {
     "searxng": SearxngConfig().model_dump(),
     "webReader": WebReaderConfig().model_dump(),
     "audio": AudioConfig().model_dump(),
+    "tts": TtsConfig().model_dump(),
     "blacklistGroups": [],
     "whitelistGroups": [],
     "mediaAnalysisBlacklistUsers": [],

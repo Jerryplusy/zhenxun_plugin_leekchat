@@ -82,7 +82,6 @@
 - **Memory**：记忆检索功能未实现（`humanize/memory.py`）
 - **Topic**：话题跟踪功能未实现（`humanize/topic.py`）
 - **Expression**：表达习惯学习功能未实现（`humanize/expression.py`）
-- **Audio**：语音消息合成未实现（`core/media/audio.py`）
 
 ## 配置
 
@@ -91,3 +90,26 @@
 ## 表情包
 
 将表情包放在 `resources/meme/<character_name>/` 下，每个角色一个子目录。
+
+## TTS 本地语音合成（GPT-SoVITS）
+
+leekchat 内置了基于 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 的本地 TTS 推理能力
+
+**默认未启用、未下载模型**，所有 leekchat 运行时数据都放在 `zhenxun_bot/data/leekchat/` 下
+
+### 命令（仅超级用户）
+
+| 命令             | 行为                                                                 |
+|------------------|----------------------------------------------------------------------|
+| `/tts dl`        | 触发模型下载与服务启动；首次启动约需 5-15 分钟，完成后会自动通知超级用户 |
+| `/tts del`       | 停止服务并删除 `data/tts/` 下的全部模型/缓存                          |
+| `/tts <文本>`    | 调用本地推理合成语音并发送                        |
+| `/tts status`    | 查看当前 TTS 服务状态                                                 |
+| `/tts help`      | 查看命令帮助                                                         |
+
+### 设备要求
+
+- Python 3.10 / 3.11 / 3.12
+- git
+- 至少 8GB RAM（CPU 推理需要）
+- 可选：NVIDIA GPU 或 Apple Silicon（MPS）

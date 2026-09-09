@@ -30,6 +30,7 @@ from .core.skills import (
 )
 from .handlers import handle_message, handle_poke
 from .handlers.skills_cmd import _skills_handler as _skills_cmd_handler  # noqa: F401  ensure registered
+from .handlers.tts_cmd import _TTS_CMD as _tts_cmd_handler  # noqa: F401  ensure registered
 from .humanize import HumanizeEngine
 from .managers import (
     ChatDatabaseCleanup,

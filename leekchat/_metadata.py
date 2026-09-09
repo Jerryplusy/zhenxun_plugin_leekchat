@@ -98,6 +98,10 @@ __plugin_meta__ = PluginMetadata(
                 command="skills",
                 description="AI skills 管理",
             ),
+            Command(
+                command="tts",
+                description="GPT-SoVITS 本地 TTS（/tts dl 下载 / /tts <文本> 推理）",
+            ),
         ],  # noqa: E501
         setting=PluginSetting(level=5),
     ).to_dict(),
