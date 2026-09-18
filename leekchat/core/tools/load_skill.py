@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from ..skills.registry import SkillEntry, SkillRegistry
     from .context import ToolContext
 
+
 def _jsonable(value: Any) -> Any:
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
@@ -53,7 +54,7 @@ def _build_smart_raw_tools(entry: "SkillEntry") -> list[dict]:
         )
         tools.append(
             {
-                "name": f"{entry.module}.{tag.name}",
+                "name": f"{entry.module}-{tag.name}",
                 "description": tag.description or "",
                 "parameters": parameters,
                 "handler": _make_smart_handler(tag.func),
@@ -82,7 +83,7 @@ def _build_execute_raw_tool(entry: "SkillEntry", tool_ctx: "ToolContext") -> dic
         )
 
     return {
-        "name": f"{entry.module}.execute",
+        "name": f"{entry.module}-execute",
         "description": (
             f"Run a command of the '{entry.name}' plugin as the triggering user. "
             f"Use the exact command text from the usage doc returned by load_skill (no prefix). "
